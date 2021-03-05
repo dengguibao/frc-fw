@@ -1,6 +1,8 @@
 import time
 import json
 
+from pyroute2 import IPRoute
+
 from rest_framework.decorators import api_view
 from rest_framework import status
 from rest_framework.response import Response
@@ -136,24 +138,30 @@ def get_static_route_table_endpoint(request):
 
 @api_view(['GET'])
 def get_interface_list_endpoint(request):
-    ret = execShell("nmcli device status")
     buffer = []
-    if ret['code'] == 0:
-        is_title = True
-        for line in ret['return'].splitlines():
-            if is_title:
-                is_title = False
-                continue
-            line_field = line.split()
-            buffer.append({
-                'device': line_field[0],
-                'type': line_field[1],
-                'state': line_field[2],
-                'connection': line_field[3],
-            })
-    else:
-        return Response(ret, status=status.HTTP_400_BAD_REQUEST)
-
+    # ret = execShell("nmcli device status")
+    # if ret['code'] == 0:
+    #     is_title = True
+    #     for line in ret['return'].splitlines():
+    #         if is_title:
+    #             is_title = False
+    #             continue
+    #         line_field = line.split()
+    #         buffer.append({
+    #             'device': line_field[0],
+    #             'type': line_field[1],
+    #             'state': line_field[2],
+    #             'connection': line_field[3],
+    #         })
+    # else:
+    #     return Response(ret, status=status.HTTP_400_BAD_REQUEST)
+    ipr = IPRoute()
+    links = ipr.get_links()
+    for i in links:
+        buffer.append({
+            "ifname": i.get_attr('IFLA_IFNAME'),
+            "state": i.get_attr('IFLA_OPERSTATE')
+        })
     return Response({
         'code': 0,
         'msg': 'success',
@@ -163,27 +171,38 @@ def get_interface_list_endpoint(request):
 
 @api_view(['GET'])
 def get_interface_detail_endpoint(request):
-    device_name = request.GET.get('device_name', None)
-    buffer = {}
-    if device_name:
-        ret = execShell(f'nmcli device show {device_name}')
-
-        if ret['code'] == 0:
-            for line in ret['return'].splitlines():
-                line_field = line.split()
-                k = line_field[0].split(':')[0]
-                v = line_field[1].strip()
-                buffer[k] = v
-            return Response({
-                'code': 0,
-                'msg': 'success',
-                'data': buffer
-            })
+    buffer = []
+    if_name = request.GET.get('ifname', None)
+    ipr = IPRoute()
+    if if_name:
+        detail = ipr.get_addr(label=if_name)
+        # ret = execShell(f'nmcli device show {if_name}')
+        #
+        # if ret['code'] == 0:
+        #     for line in ret['return'].splitlines():
+        #         line_field = line.split()
+        #         k = line_field[0].split(':')[0]
+        #         v = line_field[1].strip()
+        #         buffer[k] = v
+        #     return Response({
+        #         'code': 0,
+        #         'msg': 'success',
+        #         'data': buffer
+        #     })
     else:
-        return Response({
-            'code': 1,
-            'msg': 'not get device name'
-        }, status=status.HTTP_400_BAD_REQUEST)
+        detail = ipr.get_addr()
+    for i in detail:
+        buffer.append({
+            'address': i.get_attr('IFA_ADDRESS'),
+            'broadcast': i.get_attr('IFA_BROADCAST'),
+            'ifname': i.get_attr('IFA_LABEL'),
+            'prefix': i['prefixlen']
+        })
+    return Response({
+        'code': 1,
+        'msg': 'success',
+        'data': buffer
+    }, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
