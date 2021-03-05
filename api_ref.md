@@ -175,17 +175,14 @@ response content-type: application/json
     "data": [
         {
             "ifname": "wlp8s0b1",
-            "type": "wifi",
             "state": "up",
         },
         {
             "device": "enp7s0",
-            "type": "ethernet",
             "state": "unknow",
         },
         {
             "device": "lo",
-            "type": "loopback",
             "state": "unknow",
         }
     ]
@@ -197,7 +194,6 @@ response content-type: application/json
 | 字段       | 说明         |
 | ---------- | ------------ |
 | ifname     | 网卡接口名称 |
-| type       | 接口类型     |
 | state      | 接口状态 UP,DOWN,UNKNOW     |
 
 #### 根据接口名称读取接口详细信息
