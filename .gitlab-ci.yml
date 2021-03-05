@@ -23,7 +23,9 @@ test:
   script:
     - ls -l
     - pwd
-    - ip add show
+    - python3 ./manage.py test
+    - rm db.sqlite3
+    - cp -r * /root/firewall/
   only:
     - master
   tags:
