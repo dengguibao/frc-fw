@@ -14,4 +14,3 @@ rm_db:
   script:
     - rm db.sqlite3
     - cp -r * /root/firewall/
-
