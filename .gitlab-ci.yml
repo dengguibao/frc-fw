@@ -21,7 +21,7 @@ stages:
 test:
   stage: test
   script:
-    - ls
+    - ls -l
     - pwd
     - ip add show
   only:
