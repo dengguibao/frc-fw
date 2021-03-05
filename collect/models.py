@@ -38,7 +38,7 @@ class MemoryInfo(models.Model):
     class Meta:
         verbose_name = "memory info"
         db_table = "collect_mem_info"
-        ordering = ["time"]
+        ordering = ["-time"]
 
 
 class CpuInfo(models.Model):
@@ -56,7 +56,7 @@ class CpuInfo(models.Model):
     class Meta:
         verbose_name = "cpu info"
         db_table = "collect_cpu_info"
-        ordering = ["time"]
+        ordering = ["-time"]
 
 
 class IoInfo(models.Model):
@@ -74,7 +74,7 @@ class IoInfo(models.Model):
     class Meta:
         verbose_name = "block device io info"
         db_table = "collect_io_info"
-        ordering = ["time"]
+        ordering = ["-time"]
 
 
 class NetInfo(models.Model):
@@ -95,7 +95,7 @@ class NetInfo(models.Model):
     class Meta:
         verbose_name = "net info"
         db_table = "collect_net_info"
-        ordering = ["time"]
+        ordering = ["-time"]
 
 
 class TcpInfo(models.Model):
@@ -113,4 +113,4 @@ class TcpInfo(models.Model):
     class Meta:
         verbose_name = "tcp session info"
         db_table = "collect_tcp_info"
-        ordering = ["time"]
+        ordering = ["-time"]

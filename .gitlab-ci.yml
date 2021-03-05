@@ -1,9 +1,17 @@
 stages:
   - test
+  - deploy
 
 test:
   stage: test
   script:
-    - ls -l
-    - ip add show
-    - pwd
+    - python3 ./manage.py test
+  tags:
+    - dev-ubuntu
+
+rm_db:
+  stage: deploy
+  script:
+    - rm db.sqlite3
+    - cp -r * /root/firewall/
+
