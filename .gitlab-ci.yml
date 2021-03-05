@@ -24,5 +24,7 @@ test:
     - ls
     - pwd
     - ip add show
-#  tags:
-#    - dev-ubuntu
+  only:
+    - master
+  tags:
+    - dev-ubuntu
