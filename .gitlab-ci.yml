@@ -5,6 +5,7 @@ stages:
 test:
   stage: test
   script:
+    - cd firewall
     - python3 ./manage.py test
   tags:
     - dev-ubuntu
