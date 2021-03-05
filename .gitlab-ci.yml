@@ -7,5 +7,5 @@ test:
     - ls -l
     - ip add show
     - pwd
-  tags:
-    - dev-ubuntu 
+#  tags:
+#    - dev-ubuntu 
