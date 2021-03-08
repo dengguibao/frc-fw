@@ -1,5 +1,6 @@
 [Unit]
 Description="firewall-collector"
+After=firewall-web.service
 
 [Service]
 WorkingDirectory=/home/firewall
