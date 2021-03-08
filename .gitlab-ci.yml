@@ -28,8 +28,8 @@ deploy:
   tags:
     - dev-ubuntu
   script:
-    - systemctl stop firewall-collector.service
-    - systemctl stop firewall-web.service
+    # - systemctl stop firewall-collector.service
+    # - systemctl stop firewall-web.service
     - cp -rf * /home/firewall/
     - systemctl start firewall-web.service
     - systemctl start firewall-collector.service
