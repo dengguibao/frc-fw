@@ -10,7 +10,6 @@ from rest_framework.response import Response
 from common.common import RESOURCE_MODELS
 from common.functions import (
     timeRange2Seconds, hexStr2Ip, ip2MaskPrefix,
-    execShell
 )
 
 ALLOW_POST_HOSTS = (
@@ -162,6 +161,7 @@ def get_interface_list_endpoint(request):
             "ifname": i.get_attr('IFLA_IFNAME'),
             "state": i.get_attr('IFLA_OPERSTATE')
         })
+    ipr.close()
     return Response({
         'code': 0,
         'msg': 'success',
@@ -191,6 +191,7 @@ def get_interface_detail_endpoint(request):
         #     })
     else:
         detail = ipr.get_addr()
+    ipr.close()
     for i in detail:
         buffer.append({
             'address': i.get_attr('IFA_ADDRESS'),

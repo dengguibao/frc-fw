@@ -112,3 +112,85 @@ def prefix2NetMask(prefix: int):
         str(field4),
     )
     return '.'.join(field_list)
+
+
+def verify_ip(ip: str) -> bool:
+    """
+    verify ip whether is a invalid ip
+    :param ip:
+    :return:
+    """
+    if len(ip) > 15 or '.' not in ip or len(ip.split('.')) > 4:
+        return False
+    first = True
+    for i in ip.split('.'):
+        try:
+            n = int(i)
+        except:
+            return False
+        if n > 255:
+            return False
+        if first and n == 0:
+            return False
+        first = False
+    return True
+
+
+def verify_netmask(ip: str) -> bool:
+    """
+    verify ip whether is invalid netmask
+    :param ip: ip address
+    :return:
+    """
+    result = verify_ip(ip)
+    if result:
+        valid_dns_num = (128, 192, 224, 240, 248, 252, 254, 255)
+        field_num = [int(i) for i in ip.split('.')]
+        x = 1
+        for i in field_num:
+            if i > 0 and i not in valid_dns_num:
+                return False
+            if x < 4 and field_num[x] > i:
+                return False
+            x += 1
+        return True
+    else:
+        return False
+
+
+def verify_prefix_mode_net(net: str) -> bool:
+    if '/' not in net or len(net.split('/')) > 2:
+        return False
+    ip_prefix = net.split('/')
+    if not verify_ip(ip_prefix[0]):
+        return False
+
+    try:
+        n = int(ip_prefix[1])
+    except:
+        return False
+
+    if n > 32:
+        return False
+
+    return True
+
+
+def verify_necessary_field(data: dict, field):
+    if not isinstance(data, dict):
+        return
+
+    if isinstance(field, str):
+        if field not in data:
+            return False
+
+    if isinstance(field, list):
+        for i in field:
+            if i not in data:
+                return False
+
+    for i in field:
+        if not data[i]:
+            del data['i']
+
+    return data

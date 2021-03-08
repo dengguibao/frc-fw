@@ -4,11 +4,16 @@
 
 ## Get
 
+
+### 服务器基础信息
+
+
+
 #### 读取服务器基础信息
 
 ```
 method: GET
-get: /api/server/basicInfo
+get: /api/serverInfo/basicInfo
 response content-type: application/json
 
 response conent:
@@ -32,11 +37,17 @@ response conent:
 | running_total_time | 系统运行总时长 |
 | system_time        | 系统当前时间   |
 
+
+
+### SAR活动性能指标
+
+
+
 #### 获取服务器活动性能(SAR)指标
 
 ```
 method: GET
-get: /api/server/sar/<resource_object>[?time_range=20s]
+get: /api/serverInfo/sar/<resource_object>[?time_range=20s]
 response content-type: application/json
 
 response content:
@@ -75,13 +86,15 @@ response content:
 | io_util  | 设备利用率 |
 | time     | 采集时间   |
 
+
+
 #### 写入服务器活动性能(SAR)指标至数据库
 
 WEB用户无需使用该功能
 
 ```
 method: POST
-post: /api/server/sar/<resource_object>
+post: /api/serverInfo/sar/<resource_object>
 request content-type: application/json
 response content-type: application/json
 
@@ -89,7 +102,7 @@ request body:
 {
 	"load1": 1.0,
 	"load5": 0.6,
-	"load15": 0.5,
+	"load15": 0.5,``
 	"time:": 1614750185
 }
 
@@ -110,11 +123,17 @@ response content:
 
 *该方法可以配置允许访问的主机，在collect模块的ALLOW_POST_HOSTS全局变量中修改*
 
+
+
+### IP与路由
+
+
+
 #### 读取系统静态路由表
 
 ```
 method: GET
-get: /api/server/ipRoute/getStaticRouteTable
+get: /api/serverInfo/ipRoute/getStaticRouteTable
 return content-type: application/json
 
 
@@ -161,11 +180,13 @@ return content-type: application/json
 | prefix      | 前缀（由掩码换算而来） |
 | metric      | 跃点数                 |
 
+
+
 #### 读取网络接口列表
 
 ```
 method: get
-get: /api/server/ipRoute/getInterfaceList
+get: /api/serverInfo/ipRoute/getInterfaceList
 response content-type: application/json
 
 
@@ -196,11 +217,13 @@ response content-type: application/json
 | ifname     | 网卡接口名称 |
 | state      | 接口状态 UP,DOWN,UNKNOW     |
 
+
+
 #### 根据接口名称读取接口详细信息
 
 ```
 method: get
-get: /api/server/ipRoute/getInterfaceDetail?[ifname=wlp8s0b1]
+get: /api/serverInfo/ipRoute/getInterfaceDetail?[ifname=wlp8s0b1]
 response content-type: application/json
 
 
@@ -251,9 +274,106 @@ response content-type: application/json
 | ifname      | 接口名称                        |
 | prefix      | 前缀长度                        |
 
+
+
 ## Config
 
+
+
+### IP与路由
+
+
+
+#### 配置接口IP地址
+
+```text
+method: POST
+post: /api/config/ipRoute/setAddress
+
+{
+    "ip": "192.168.100.2",
+    "netmask": "255.255.255.0",
+    "ifname": "eth0"
+}
+
+success:
+{
+    "code": 0,
+    "msg": "success"
+}
+
+faild:
+{
+    "code": 1,
+    "msg": "error reason"
+}
+```
+
+请求说明
+
+| 参数        | 必选 | 说明         |
+| ----------- | ---- | ---------- |
+| ip | 是   | IP地址 |
+| netmask | 是   | 子网掩码，支持前缀格式 |
+| ifname | 是   | 接口名称 |
+
+
+
+#### 配置路由
+
+```text
+method: POST
+post: /api/config/ipRoute/setRoute
+
+{
+    "ip": "192.168.100.2",
+    "netmask": "255.255.255.0",
+    "ifname": "eth0"
+}
+
+success:
+{
+    "code": 0,
+    "msg": "success"
+}
+
+faild:
+{
+    "code": 1,
+    "msg": "error reason"
+}
+```
+请求说明
+
+| 参数        | 必选 | 说明         |
+| ----------- | ---- | ---------- |
+| dst | 是   | IP地址 |
+| netmask | 否   | 如果目标网段采用网段/前缀格式，则该字段可以省略 |
+| gateway | 是   | 网关地址 |
+| ifname | 是   | 接口名称 |
+| table | 否   | 是否时写入默认路由表，值为"main"时写入默认路由表，否则写入以接口ID为索引的路由表|
+
+
+
 ## Delete
+
+
+
+### IP与路由
+
+
+
+#### 删除接口IP地址
+
+ >参考设置API，请求方法为DELETE
+
+
+
+#### 删除路由
+
+ >参考设置API,请求方法为DELETE
+
+
 
 #### 清理前一天前的所有sar采集数据
 
@@ -261,7 +381,7 @@ WEB界面暂不需要读取
 
 ```
 method: GET
-get: /api/server/sarClear
+get: /api/serverInfo/sarClear
 response content-type: application/json
 
 

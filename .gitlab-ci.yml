@@ -1,5 +1,14 @@
 stages:
+  - install-dep
   - test
+  - deploy
+
+build:
+  stage: install-dep
+  tags:
+    - dev-ubuntu
+  script:
+    - pip3 install -r ./requirement.txt
 
 test:
   stage: test
@@ -8,8 +17,19 @@ test:
     - pwd
     - python3 ./manage.py test
     - rm db.sqlite3
-    - cp -r * /home/firewall/
-  only:
-    - master
+    #- cp -r * /home/firewall/
+#  only:
+#    - master
   tags:
     - dev-ubuntu
+
+deploy:
+  stage: deploy
+  tags:
+    - dev-ubutu
+  script:
+    - systemctl stop firewall-collector
+    - systemctl stop firewall-web
+    cp -rf * /home/firewall/
+    - systemctl start firewall-web
+    - systemctl start firewall-collector

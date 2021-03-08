@@ -372,7 +372,7 @@ def post_data(d: dict):
         return
 
     resource_name = d['name']
-    api = f"{SERVER}/api/server/sar/{resource_name}"
+    api = f"{SERVER}/api/serverInfo/sar/{resource_name}"
 
     json_str = json.dumps(d['data'], ensure_ascii=False)
     req = request.urlopen(api, data=json_str.encode())

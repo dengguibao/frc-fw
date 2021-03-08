@@ -1,0 +1,9 @@
+[Unit]
+Description="firewall-collector"
+
+[Service]
+WorkingDirectory=/home/firewall
+Restart=always
+ExecStart=/usr/bin/python3 ./scripts/collector.py --server 127.0.0.1:8000
+KillMode=process
+KillSignal=SIGTERM
