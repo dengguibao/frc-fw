@@ -30,6 +30,6 @@ deploy:
   script:
     - systemctl stop firewall-collector
     - systemctl stop firewall-web
-    cp -rf * /home/firewall/
+    - cp -rf * /home/firewall/
     - systemctl start firewall-web
     - systemctl start firewall-collector
