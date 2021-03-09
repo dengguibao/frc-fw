@@ -358,7 +358,7 @@ def console_log(data: dict):
     :return:
     """
     # data = json.loads(json_str)
-    if 'name' in data and 'msg' in data:
+    if data and 'name' in data and 'msg' in data:
         print(data['name'], 'write to db', data['msg'])
 
 
@@ -375,8 +375,19 @@ def post_data(d: dict):
     api = f"{SERVER}/api/serverInfo/sar/{resource_name}"
 
     json_str = json.dumps(d['data'], ensure_ascii=False)
-    req = request.urlopen(api, data=json_str.encode())
-    if req.getcode() in (200, 201, 400):
+    n = 0
+    req = None
+    while 1:
+        try:
+            req = request.urlopen(api, data=json_str.encode())
+        except:
+            n += 1
+            if n >= 5:
+                break
+            time.sleep(1)
+        else:
+            break
+    if req and req.getcode() in (200, 201, 400):
         return json.loads(req.read().decode())
     return
 

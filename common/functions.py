@@ -9,7 +9,7 @@ def execShell(cmd):
     """
     ret = subprocess.run(
         cmd,
-        shell=True,
+        shell=False,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         timeout=1,
@@ -176,21 +176,33 @@ def verify_prefix_mode_net(net: str) -> bool:
     return True
 
 
-def verify_necessary_field(data: dict, field):
+def verify_necessary_field(data: dict, field: tuple):
     if not isinstance(data, dict):
         return
 
-    if isinstance(field, str):
-        if field not in data:
-            return False
+    buff = {}
 
-    if isinstance(field, list):
+    pass_flag = False
+
+    if isinstance(field, tuple):
         for i in field:
-            if i not in data:
+            if i[0] == '*' and i[1:] not in data:
                 return False
 
-    for i in field:
-        if not data[i]:
-            del data['i']
+            if i[0] == '*' and i[1:] in data:
+                pass_flag = True
 
-    return data
+            if i in data:
+                pass_flag = True
+
+    if pass_flag:
+        for i in field:
+            k = i.strip()
+            if k[0] == '*':
+                k = k[1:]
+
+            if k in data and data[k]:
+                buff[k] = data[k]
+
+        return buff
+    return False

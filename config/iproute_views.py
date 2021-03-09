@@ -24,13 +24,7 @@ def set_ip_address_endpoint(request):
             'msg': 'request body error!'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    data = verify_necessary_field(j, ['ip', 'netmask', 'ifname'])
-
-    # if j['command'] not in ('add', 'replace', 'delete'):
-    #     return Response({
-    #         'code': 1,
-    #         'msg': 'command error'
-    #     }, status=status.HTTP_400_BAD_REQUEST)
+    data = verify_necessary_field(j, ('*ip', '*netmask', '*ifname'))
 
     if not data:
         return Response({
@@ -71,9 +65,7 @@ def set_ip_address_endpoint(request):
 
     ipr = IPRoute()
     ifidx = ipr.link_lookup(ifname=j['ifname'].strip())[0]
-    # if j['command'] == 'replace':
-    #     old_ip = ipr.get_addr(label=j['ifname'].strip())[0].get_attr('IFA_ADDRESS')
-    #     ipr.addr('delete', index=ifidx, address=old_ip, mask=prefix)
+
     json_success = {
         'code': 0,
         'msg': 'success'
@@ -106,7 +98,7 @@ def set_route_endpoint(request):
             'msg': 'request body error!'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    data = verify_necessary_field(j, ['dst', 'gateway', 'ifname'])
+    data = verify_necessary_field(j, ('*dst', '*gateway', '*ifname'))
 
     if not data or not verify_ip(j['gateway']):
         return Response({
@@ -129,6 +121,7 @@ def set_route_endpoint(request):
 
     ipdb = IPDB()
     ifname_list = ipdb.by_name
+
     ipr = IPRoute()
 
     if j['ifname'] not in ifname_list:
@@ -138,7 +131,7 @@ def set_route_endpoint(request):
         }, status=status.HTTP_400_BAD_REQUEST)
 
     if 'table' in j and j['table'] != 'main':
-        j['table'] = ipr.link_lookup(label=j['ifname'].strip())[0]
+        j['table'] = ipr.link_lookup(ifname=j['ifname'].strip())[0]
     else:
         j['table'] = 254
 
@@ -165,3 +158,108 @@ def set_route_endpoint(request):
     finally:
         ipr.close()
     return Response(success_json, status_code)
+
+
+@api_view(['POST', 'DELETE'])
+def set_policy_route_endpoint(request):
+    req_body = request.body
+    try:
+        j = json.loads(req_body.decode())
+    except:
+        return Response({
+            'code': 1,
+            'msg': 'request body error!'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    data = verify_necessary_field(j, ('src', 'dst', 'src_len', 'dst_len', 'iifname', 'priority', 'tos', '*ifname'))
+
+    if not data:
+        return Response({
+            'code': 1,
+            'msg': 'some required field is mission!'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    if ('src' in j and (not verify_ip(j['src']) and not verify_prefix_mode_net(j['src']))) \
+            or ('dst' in j and (not verify_ip(j['dst']) and not verify_prefix_mode_net(j['dst']))):
+        return Response({
+            'code': 1,
+            'msg': 'ip address format error'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    if 'src_len' in j:
+        try:
+            src_len = int(j['src_len'])
+        except:
+            return Response({
+                'code': 1,
+                'msg': "prefix of netmask error!"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            if 0 < src_len > 32:
+                return Response({
+                    'code': 1,
+                    'msg': "prefix value error!"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+    if 'dst_len' in j:
+        try:
+            dst_len = int(j['dst_len'])
+        except:
+            return Response({
+                'code': 1,
+                'msg': "prefix of netmask error!"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            if 0 < dst_len > 32:
+                return Response({
+                    'code': 1,
+                    'msg': "prefix value error!"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+    if 'priority' in j:
+        try:
+            pri = int(j['priority'])
+            data['priority'] = pri
+        except:
+            return Response({
+                'code': 1,
+                'msg': "priority error!"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+    ipdb = IPDB()
+    ifname_list = ipdb.by_name
+
+    if j['ifname'] not in ifname_list:
+        return Response({
+            'code': 1,
+            'msg': "error ifname!"
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    ipr = IPRoute()
+
+    return_json = {}
+
+    if request.method == 'POST':
+        command = 'add'
+        status_code = status.HTTP_201_CREATED
+
+    if request.method == 'DELETE':
+        command = 'del'
+        status_code = status.HTTP_200_OK
+
+    try:
+
+        if_idx = ipr.link_lookup(ifname=j['ifname'])
+        data['table'] = if_idx[0]
+        ipr.rule(command, **data)
+    except Exception as e:
+        return_json['code'] = 1
+        return_json['msg'] = e.args[1] if len(e.args) > 2 else str(e)
+        status_code = status.HTTP_400_BAD_REQUEST
+    else:
+        return_json['code'] = 0
+        return_json['msg'] = 'success'
+    finally:
+        ipr.close()
+
+    return Response(return_json, status_code)

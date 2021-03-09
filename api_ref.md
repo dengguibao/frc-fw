@@ -48,6 +48,7 @@ response conent:
 ```
 method: GET
 get: /api/serverInfo/sar/<resource_object>[?time_range=20s]
+example: /api/serverInfo/sar/load?time_range=5m(获取5分钟内，所有CPU负载信息)
 response content-type: application/json
 
 response content:
@@ -72,7 +73,7 @@ response content:
 
 | 参数          | 必须 | 说明                                                         |
 | ------------- | ---- | ------------------------------------------------------------ |
-| resource_name | 是   | 请求获取的资源名称，可用资源包含io(IO)、net(网络接口)、cpu(CPU)、memory(内存)、tcp(TCP会话)、load(系统负载) |
+| resource_name | 是   | 请求获取的资源类型名称，可用资源包含io(IO)、net(网络接口)、cpu(CPU)、memory(内存)、tcp(TCP会话)、load(系统负载) |
 | time_range    | 否   | 获取指定时间范围内的活动性能，例如 5m 表示5分钟内的所有数据，不指定该参数则获取最新的一条记录 |
 
 返回值解释
@@ -102,7 +103,7 @@ request body:
 {
 	"load1": 1.0,
 	"load5": 0.6,
-	"load15": 0.5,``
+	"load15": 0.5,
 	"time:": 1614750185
 }
 
@@ -353,6 +354,44 @@ faild:
 | ifname | 是   | 接口名称 |
 | table | 否   | 是否时写入默认路由表，值为"main"时写入默认路由表，否则写入以接口ID为索引的路由表|
 
+#### 配置策略路由
+
+```text
+method: POST
+post: /api/config/ipRoute/setPolicyRoute
+
+{
+    "dst": "192.168.100.1/32",
+    "ifname": "eth0"
+}
+
+success: 
+{
+    "code": 0,
+    "msg": 'success'
+}
+
+faild:
+{
+    "code": 1,
+    "msg": 'error reason'
+}
+```
+
+请求说明
+
+| 参数        | 必选 | 说明         |
+| ----------- | ---- | ---------- |
+| dst | 否   | 目标地址，格式为192.168.100.0/24或192.168.100.0 |
+| dst | 否   | 源地址，格式为192.168.100.0/24或192.168.100.0 |
+| src_len | 否 | 如果目标地址，采用网段/前缀格式，则该字段可以省略 |
+| src_len | 否 | 如果源地址标，采用网段/前缀格式，则该字段可以省略 |
+| priority | 否 | 规则优先级 |
+| ifname | 是 | 接口名称,将该规则写入对应的接口索引路由表 |
+| iifname | 否 | 如果目标网段采用网段/前缀格式，则该字段可以省略 |
+| tos | 否 | 服务类型type of service |
+
+>以上所有非必选字段必段任选其一
 
 
 ## Delete
@@ -368,6 +407,10 @@ faild:
  >参考设置API，请求方法为DELETE
 
 
+
+#### 删除路由
+
+ >参考设置API,请求方法为DELETE
 
 #### 删除路由
 
