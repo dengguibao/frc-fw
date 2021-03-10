@@ -84,6 +84,7 @@ def set_ip_address_endpoint(request):
         json_success['msg'] = e.args[1] if len(e.args) >= 2 else str(e.args)
     finally:
         ipr.close()
+        ipdb.release()
     return Response(json_success, status_code)
 
 
@@ -157,6 +158,7 @@ def set_route_endpoint(request):
         success_json['msg'] = e.args[1] if len(e.args) >= 2 else str(e.args)
     finally:
         ipr.close()
+        ipdb.release()
     return Response(success_json, status_code)
 
 
@@ -171,7 +173,7 @@ def set_policy_route_endpoint(request):
             'msg': 'request body error!'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    data = verify_necessary_field(j, ('src', 'dst', 'src_len', 'dst_len', 'iifname', 'priority', 'tos', '*ifname'))
+    data = verify_necessary_field(j, ('src', 'dst', 'src_len', 'dst_len', 'priority', 'tos', '*ifname'))
 
     if not data:
         return Response({
@@ -261,5 +263,70 @@ def set_policy_route_endpoint(request):
         return_json['msg'] = 'success'
     finally:
         ipr.close()
+        ipdb.release()
 
     return Response(return_json, status_code)
+
+
+@api_view(['POST'])
+def set_interface_state_endpoint(request):
+    req_body = request.body
+    try:
+        j = json.loads(req_body.decode())
+    except:
+        return Response({
+            'code': 1,
+            'msg': 'request body error!'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    data = verify_necessary_field(j, ('*ifname', '*state'))
+    if not data:
+        return Response({
+            'code': 1,
+            'msg': 'some required field is mission!'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    if data['state'].lower() not in ('up', 'down'):
+        return Response({
+            'code': 1,
+            'msg': 'interface status value is wrong!'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    ipdb = IPDB()
+    ifdb = ipdb.interfaces
+    ifname = data['ifname']
+
+    if data['ifname'] not in ifdb:
+        return Response({
+            'code': 1,
+            'msg': 'ifname value is wrong!'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    if ifdb[ifname]['state'] == data['state']:
+        return Response({
+            'code': 1,
+            'msg': 'interface %s state is already %s' % (ifname, data['state'])
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+
+        ifdb[ifname].freeze()
+        if data['state'].lower() == 'up':
+            ifdb[ifname].up().commit()
+        if data['state'].lower() == 'down':
+            ifdb[ifname].down().commit()
+        ifdb[ifname].unfreeze()
+
+    except Exception as e:
+        return Response({
+            'code': 1,
+            'msg': e.args[1] if len(e.args) > 2 else str(e.args)
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    finally:
+        ipdb.release()
+
+    return Response({
+        'code': 0,
+        'msg': 'success'
+    }, status=status.HTTP_200_OK)

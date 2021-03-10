@@ -101,10 +101,10 @@ def prefix2NetMask(prefix: int):
         return
     zero = 32 - prefix
     bin_ip = '1' * prefix + '0' * zero
-    field1 = int('0b%s' % bin_ip[0:8])
-    field2 = int('0b%s' % bin_ip[8:16])
-    field3 = int('0b%s' % bin_ip[16:24])
-    field4 = int('0b%s' % bin_ip[24:32])
+    field1 = int('0b%s' % bin_ip[0:8], 2)
+    field2 = int('0b%s' % bin_ip[8:16], 2)
+    field3 = int('0b%s' % bin_ip[16:24], 2)
+    field4 = int('0b%s' % bin_ip[24:32], 2)
     field_list = (
         str(field1),
         str(field2),

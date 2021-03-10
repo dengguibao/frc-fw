@@ -1,7 +1,10 @@
 import time
 import json
 
+from socket import AF_INET
+
 from pyroute2 import IPRoute
+from pyroute2 import IPDB
 
 from rest_framework.decorators import api_view
 from rest_framework import status
@@ -9,7 +12,7 @@ from rest_framework.response import Response
 
 from common.common import RESOURCE_MODELS
 from common.functions import (
-    timeRange2Seconds, hexStr2Ip, ip2MaskPrefix,
+    timeRange2Seconds, prefix2NetMask
 )
 
 ALLOW_POST_HOSTS = (
@@ -55,7 +58,7 @@ def sar_info_endpoint(request, name):
             'msg': 'success',
             'data': response_data.data
         }
-        return Response(return_data, status=status.HTTP_201_CREATED)
+        return Response(return_data, status=status.HTTP_200_OK)
 
     elif request.method == 'POST':
         remote_addr = request.META.get('REMOTE_ADDR')
@@ -106,33 +109,70 @@ def get_basic_info_endpoint(request):
             'running_total_time': running_total_time if running_total_time else None,
             'system_time': system_time
         }
-    }, status=status.HTTP_201_CREATED)
+    }, status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])
 def get_static_route_table_endpoint(request):
-    is_title = True
+    table = request.GET.get('interface_index', 254)
+    try:
+        table = int(table)
+    except:
+        table = 254
+    ipdb = IPDB()
+    ifname_list = ipdb.by_name.keys()
+    ipr = IPRoute()
+    x = ipr.route('dump', table=table)
     route_table = []
-    with open('/proc/net/route') as fp:
-        for line in fp:
-            if is_title:
-                is_title = False
-                continue
-            line_field = line.split()
-            netmask = hexStr2Ip(line_field[7])
-            route_table.append({
-                "iface": line_field[0],
-                "destination": hexStr2Ip(line_field[1]),
-                "gateway": hexStr2Ip(line_field[2]),
-                "netmask": netmask,
-                "prefix": ip2MaskPrefix(netmask),
-                "metric": line_field[6]
-            })
+    for i in x:
+        buf = {}
+        dst_len = i['dst_len']
+        table = i['table']
+        dst_addr = i.get_attr('RTA_DST') if i.get_attr('RTA_DST') else '0.0.0.0'
+        gw = i.get_attr('RTA_GATEWAY')
+        metric = i.get_attr('RTA_PRIORITY')
+        if_idx = i.get_attr('RTA_OIF')
+
+        if not if_idx:
+            continue
+
+        buf['destination'] = dst_addr
+        buf['netmask'] = prefix2NetMask(dst_len)
+        if gw:
+            buf['gateway'] = gw
+        if if_idx:
+            buf['iface'] = ifname_list[if_idx - 1]
+        if metric:
+            buf['metric'] = metric
+        buf['table'] = table
+        buf['prefix'] = dst_len
+        route_table.append(buf)
+        del buf
+    ipr.close()
+    ipdb.release()
+
+    # is_title = True
+    # route_table = []
+    # with open('/proc/net/route') as fp:
+    #     for line in fp:
+    #         if is_title:
+    #             is_title = False
+    #             continue
+    #         line_field = line.split()
+    #         netmask = hexStr2Ip(line_field[7])
+    #         route_table.append({
+    #             "iface": line_field[0],
+    #             "destination": hexStr2Ip(line_field[1]),
+    #             "gateway": hexStr2Ip(line_field[2]),
+    #             "netmask": netmask,
+    #             "prefix": ip2MaskPrefix(netmask),
+    #             "metric": line_field[6]
+    #         })
     return Response({
         "code": 0,
         "msg": "success",
         "data": route_table
-    }, status=status.HTTP_201_CREATED)
+    }, status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])
@@ -159,14 +199,15 @@ def get_interface_list_endpoint(request):
     for i in links:
         buffer.append({
             "ifname": i.get_attr('IFLA_IFNAME'),
-            "state": i.get_attr('IFLA_OPERSTATE')
+            "state": i.get_attr('IFLA_OPERSTATE'),
+            "index": i['index'],
         })
     ipr.close()
     return Response({
         'code': 0,
         'msg': 'success',
         'data': buffer
-    }, status=status.HTTP_201_CREATED)
+    }, status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])
@@ -190,20 +231,21 @@ def get_interface_detail_endpoint(request):
         #         'data': buffer
         #     })
     else:
-        detail = ipr.get_addr()
+        detail = ipr.get_addr(family=AF_INET)
     ipr.close()
     for i in detail:
         buffer.append({
             'address': i.get_attr('IFA_ADDRESS'),
             'broadcast': i.get_attr('IFA_BROADCAST'),
             'ifname': i.get_attr('IFA_LABEL'),
-            'prefix': i['prefixlen']
+            'prefix': i['prefixlen'],
+            'index': i['index']
         })
     return Response({
         'code': 1,
         'msg': 'success',
         'data': buffer
-    }, status=status.HTTP_400_BAD_REQUEST)
+    }, status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])

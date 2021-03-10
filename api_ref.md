@@ -43,7 +43,7 @@ response conent:
 
 
 
-#### 获取服务器活动性能(SAR)指标
+#### 读取服务器活动性能(SAR)指标
 
 ```
 method: GET
@@ -107,7 +107,7 @@ request body:
 	"time:": 1614750185
 }
 
-response content:
+response:
 {
 	"code": 0,
 	"name": "load"
@@ -134,10 +134,10 @@ response content:
 
 ```
 method: GET
-get: /api/serverInfo/ipRoute/getStaticRouteTable
+get: /api/serverInfo/ipRoute/getStaticRouteTable[?interface_index=1]
 return content-type: application/json
 
-
+response:
 {
     "code": 0,
     "msg": "success",
@@ -170,6 +170,13 @@ return content-type: application/json
 }
 ```
 
+请求参数
+
+| 字段        | 可选 | 说明                   |
+| ---------- | --- | -----------------|
+| interface_index | 否 | 网卡接口索止编号           |
+
+
 返回值解释
 
 | 字段        | 说明                   |
@@ -179,7 +186,7 @@ return content-type: application/json
 | gateway     | 网关                   |
 | netmask     | 子网掩码               |
 | prefix      | 前缀（由掩码换算而来） |
-| metric      | 跃点数                 |
+| metric      | 优先级                 |
 
 
 
@@ -187,10 +194,10 @@ return content-type: application/json
 
 ```
 method: get
-get: /api/serverInfo/ipRoute/getInterfaceList
+get: /api/serverInfo/interface/getInterfaceList
 response content-type: application/json
 
-
+response:
 {
     "code": 0,
     "msg": "success",
@@ -198,14 +205,17 @@ response content-type: application/json
         {
             "ifname": "wlp8s0b1",
             "state": "up",
+            "index": 1
         },
         {
             "device": "enp7s0",
             "state": "unknow",
+            "index": 2
         },
         {
             "device": "lo",
             "state": "unknow",
+            "index": 3
         }
     ]
 }
@@ -217,17 +227,18 @@ response content-type: application/json
 | ---------- | ------------ |
 | ifname     | 网卡接口名称 |
 | state      | 接口状态 UP,DOWN,UNKNOW     |
+| index      | 接口索引，查询指定路由表时可以指定该参数     |
 
 
 
-#### 根据接口名称读取接口详细信息
+#### 读取接口详细信息
 
 ```
 method: get
-get: /api/serverInfo/ipRoute/getInterfaceDetail?[ifname=wlp8s0b1]
+get: /api/serverInfo/interface/getInterfaceDetail?[ifname=wlp8s0b1]
 response content-type: application/json
 
-
+response:
 {
     "code": 1,
     "msg": "success",
@@ -236,25 +247,15 @@ response content-type: application/json
             "address": "127.0.0.1",
             "broadcast": null,
             "ifname": "lo",
-            "prefix": 8
+            "prefix": 8,
+            "index": 1
         },
         {
             "address": "192.168.3.161",
             "broadcast": "192.168.3.255",
             "ifname": "wlp8s0b1",
-            "prefix": 24
-        },
-        {
-            "address": "::1",
-            "broadcast": null,
-            "ifname": null,
-            "prefix": 128
-        },
-        {
-            "address": "fe80::8033:7c4f:40d7:d9eb",
-            "broadcast": null,
-            "ifname": null,
-            "prefix": 64
+            "prefix": 24,
+            "index": 2
         }
     ]
 }
@@ -274,6 +275,7 @@ response content-type: application/json
 | broadcast   | 广播地址                        |
 | ifname      | 接口名称                        |
 | prefix      | 前缀长度                        |
+| index      | 网卡接口索引                        |
 
 
 
@@ -283,6 +285,31 @@ response content-type: application/json
 
 ### IP与路由
 
+#### 设置接口状态
+```text
+method: POST
+post: /api/config/interface/setInterface
+response content-type: application/json
+
+request:
+{
+    "ifname": "lo",
+    "status": "up"
+}
+
+response:
+{
+    "code": 0,
+    "msg": "error reason"
+}
+
+```
+请求说明
+
+| 参数        | 必选 | 说明         |
+| ----------- | ---- | ---------- |
+| ifanme | 是   | 接口名称 |
+| status | 是   | 接口状态 |
 
 
 #### 配置接口IP地址
@@ -291,6 +318,7 @@ response content-type: application/json
 method: POST
 post: /api/config/ipRoute/setAddress
 
+request body:
 {
     "ip": "192.168.100.2",
     "netmask": "255.255.255.0",
@@ -325,7 +353,9 @@ faild:
 ```text
 method: POST
 post: /api/config/ipRoute/setRoute
+response content-type: application/json
 
+request body:
 {
     "ip": "192.168.100.2",
     "netmask": "255.255.255.0",
@@ -359,7 +389,9 @@ faild:
 ```text
 method: POST
 post: /api/config/ipRoute/setPolicyRoute
+response content-type: application/json
 
+request body:
 {
     "dst": "192.168.100.1/32",
     "ifname": "eth0"
