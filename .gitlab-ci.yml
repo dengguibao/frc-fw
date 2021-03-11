@@ -38,5 +38,5 @@ security_scan:
   tags:
     - securityScan
   script:
-    - git clone http://10.10.4.2/denggb/firewall.git
+    # - git clone http://10.10.4.2/denggb/firewall.git
     - /usr/local/bin/bandit -r .
