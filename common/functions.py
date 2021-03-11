@@ -206,3 +206,15 @@ def verify_necessary_field(data: dict, field: tuple):
 
         return buff
     return False
+
+
+def verify_port(p):
+    try:
+        d = int(p)
+    except Exception as e:
+        # print(e)
+        return False
+
+    if 0 < d or d > 65535:
+        return str(p)
+    return False

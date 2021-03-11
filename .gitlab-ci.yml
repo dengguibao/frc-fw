@@ -2,6 +2,7 @@ stages:
   - install-dep
   - test
   - deploy
+  - security-scan
 
 build:
   stage: install-dep
@@ -31,3 +32,10 @@ deploy:
      - cp -rf * /home/firewall/
      - systemctl restart firewall-web.service
      - systemctl restart firewall-collector.service
+
+security_scan:
+  stage: security-scan
+  tags:
+    - securityScan
+  script:
+    - bandit -r .

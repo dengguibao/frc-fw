@@ -235,7 +235,7 @@ response:
 
 ```
 method: get
-get: /api/serverInfo/interface/getInterfaceDetail?[ifname=wlp8s0b1]
+get: /api/serverInfo/interface/getInterfaceDetail[?ifname=wlp8s0b1]
 response content-type: application/json
 
 response:
@@ -279,13 +279,45 @@ response:
 
 
 
+### Iptables
+
+
+
+#### 查询链组
+
+```text
+method: GET
+get: /api/config/iptables/getChainGroups?group_type=<grou_type>
+response content-type: application/json
+
+response:
+{
+	"code": 0,
+	"msg": "success",
+	"data":[
+		"a","b"
+	]
+}
+```
+
+请求参数
+
+| 参数       | 必选 | 说明                                    |
+| ---------- | ---- | --------------------------------------- |
+| group_type | 是   | 链组类型，可选类型为snat, dnat, forward |
+
+
+
 ## Config
 
 
 
 ### IP与路由
 
+
+
 #### 设置接口状态
+
 ```text
 method: POST
 post: /api/config/interface/setInterface
@@ -310,7 +342,6 @@ response:
 | ----------- | ---- | ---------- |
 | ifanme | 是   | 接口名称 |
 | status | 是   | 接口状态 |
-
 
 #### 配置接口IP地址
 
@@ -384,6 +415,8 @@ faild:
 | ifname | 是   | 接口名称 |
 | table | 否   | 是否时写入默认路由表，值为"main"时写入默认路由表，否则写入以接口ID为索引的路由表|
 
+
+
 #### 配置策略路由
 
 ```text
@@ -416,14 +449,179 @@ faild:
 | ----------- | ---- | ---------- |
 | dst | 否   | 目标地址，格式为192.168.100.0/24或192.168.100.0 |
 | dst | 否   | 源地址，格式为192.168.100.0/24或192.168.100.0 |
-| src_len | 否 | 如果目标地址，采用网段/前缀格式，则该字段可以省略 |
-| src_len | 否 | 如果源地址标，采用网段/前缀格式，则该字段可以省略 |
+| src_len | 否 | 源地址掩码长度，如果源标地址，采用网段/前缀格式，则该字段可以省略 |
+| dst_len | 否 | 目标地址掩长度，如果目标地址标，采用网段/前缀格式，则该字段可以省略 |
 | priority | 否 | 规则优先级 |
 | ifname | 是 | 接口名称,将该规则写入对应的接口索引路由表 |
 | iifname | 否 | 如果目标网段采用网段/前缀格式，则该字段可以省略 |
 | tos | 否 | 服务类型type of service |
 
->以上所有非必选字段必段任选其一
+>以上所有非必选字段，必须任选其一
+
+
+
+### Iptables
+
+
+
+#### 添加链组
+
+```text
+method: POST
+post: /api/config/iptables/setChainGroup
+request content-type: application/json
+
+req:
+{
+	"table_name":"nat",
+	"chain_name": "abcdefg",
+	"nat_mode": "snat"
+}
+
+response:
+{
+	"code":0,
+	"msg": "success"
+}
+```
+
+请求说明
+
+| 字段       | 必选 | 说明                                                         |
+| ---------- | ---- | ------------------------------------------------------------ |
+| table_name | 是   | 链组类型，可选值为snat(NAT规则),dnat(端口映射), filter(转发规则) |
+| chain_name | 是   | 链组名称，用户自定义链组名称                                 |
+| nat_mode   | 否   | 当table_name字段为nat时，该字段变为必选，可选值为(snat, dnat) |
+
+
+
+#### 设置端口映射
+
+```text
+method: POST
+post: /api/config/iptables/setRule/dnat
+request content-type: application/json
+response content-type: application/json
+
+req:
+{
+	"chain_group_name": "dnat-test",
+	"src": "192.168.3.100/32",
+	"dst": "192.168.3.1/32",
+	"protocol": "tcp",
+	"target": "DNAT",
+	"to_destination": "192.168.3.1"
+}
+
+response:
+{
+	"code":0,
+	"msg": 'success'
+}
+```
+
+请求说明
+
+| 字段             | 必选 | 说明                                                         |
+| ---------------- | ---- | ------------------------------------------------------------ |
+| chain_group_name | 是   | 链组名称，通过api接口查询得到，group_type=snat(查询参数)     |
+| src              | 否   | 源地址，格式为 a.b.c.d/prefixlen                             |
+| dst              | 否   | 目标地址，格式为 a.b.c.d/prefixlen                           |
+| protocol         | 否   | 协议，目前仅支持tcp,udp, 当指定dport,sport参数后，该字段为必选 |
+| sport            | 否   | 源端口                                                       |
+| dport            | 否   | 目标端口                                                     |
+| in_interface     | 否   | 流量入接口名称，通过api可询得到                              |
+| to_port          | 否   | 转发目标端口，当target为REDIRECT是，该值为必选               |
+| to_destination   | 否   | DNAT模式下使用的目标地址，当target为DNAT时，该值为必选，格式为 a.b.c.d或a.b.c.d/prefixlen |
+| comment          | 否   | 规则注释                                                     |
+| target           | 是   | 目标，该API接口下，值为DNAT，REDIRECT                        |
+
+
+
+#### 设置NAT规则
+
+```text
+method: POST
+post: /api/config/iptables/setRule/snat
+request content-type: application/json
+response content-type: application/json
+
+req:
+{
+	"chain_group_name": "aaa",
+	"src": "192.168.3.100/32",
+	"dst": "192.168.3.1/32",
+	"protocol": "tcp",
+	"target": "SNAT",
+	"to_source": "192.168.3.1"
+}
+
+response:
+{
+	"code":0,
+	"msg": 'success'
+}
+```
+
+请求说明
+
+| 字段             | 必选 | 说明                                                         |
+| ---------------- | ---- | ------------------------------------------------------------ |
+| chain_group_name | 是   | 链组名称，通过api接口查询得到，group_type=snat(查询参数)     |
+| src              | 否   | 源地址，格式为 a.b.c.d/prefixlen                             |
+| dst              | 否   | 目标地址，格式为 a.b.c.d/prefixlen                           |
+| protocol         | 否   | 协议，目前仅支持tcp,udp, 当指定dport,sport参数后，该字段为必选 |
+| sport            | 否   | 源端口                                                       |
+| dport            | 否   | 目标端口                                                     |
+| in_interface     | 否   | 流量入接口名称，通过api可询得到                              |
+| to_source        | 否   | NAT源地址，当target为SNAT时，该值为必选                      |
+| comment          | 否   | 规则注释                                                     |
+| target           | 是   | 目标，该该API接口下，值为SNAT，MASQUERADE                    |
+
+
+
+#### 设置转发规则
+
+#### 
+
+```text
+method: POST
+post: /api/config/iptables/setRule/filter
+request content-type: application/json
+response content-type: application/json
+
+req:
+{
+	"chain_group_name": "aaa",
+	"src": "192.168.3.100/32",
+	"dport": 80,
+	"protocol": "tcp",
+	"target": "ACCEPT",
+}
+
+response:
+{
+	"code":0,
+	"msg": 'success'
+}
+```
+
+请求说明
+
+| 字段             | 必选 | 说明                                                         |
+| ---------------- | ---- | ------------------------------------------------------------ |
+| chain_group_name | 是   | 链组名称，通过api接口查询得到，group_type=snat(查询参数)     |
+| src              | 否   | 源地址，格式为 a.b.c.d/prefixlen                             |
+| dst              | 否   | 目标地址，格式为 a.b.c.d/prefixlen                           |
+| protocol         | 否   | 协议，目前仅支持tcp,udp, 当指定dport,sport参数后，该字段为必选 |
+| sport            | 否   | 源端口                                                       |
+| dport            | 否   | 目标端口                                                     |
+| comment          | 否   | 规则注释                                                     |
+| in_interface     | 否   | 流量入接口名称，通过api可询得到                              |
+| target           | 是   | 目标，该该API接口下，值为ACCEPT(接收),DROP(丢弃)             |
+
+
+
 
 
 ## Delete
@@ -440,11 +638,11 @@ faild:
 
 
 
-#### 删除路由
+#### 删除静态路由
 
  >参考设置API,请求方法为DELETE
 
-#### 删除路由
+#### 删除策略路由
 
  >参考设置API,请求方法为DELETE
 
