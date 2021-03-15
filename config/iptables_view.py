@@ -351,7 +351,7 @@ def build_rule(data: dict, target_action: tuple) -> dict:
             'comment': data['comment']
         }
 
-    print(r)
+    # print(r)
     return r
 
 
@@ -387,10 +387,6 @@ def get_chain_groups(group_type: str):
 
 def get_all_interfaces_list() -> list:
     ipdb = IPDB()
-    d = ipdb.interfaces
-    data = []
-    for i in d:
-        if isinstance(i, str):
-            data.append(i)
+    d = ipdb.by_name.keys()
     ipdb.release()
-    return data
+    return d

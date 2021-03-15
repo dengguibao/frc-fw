@@ -78,6 +78,8 @@ response content:
 
 返回值解释
 
+##### io
+
 | 字段     | 说明       |
 | -------- | ---------- |
 | block    | 块设备名称 |
@@ -86,6 +88,66 @@ response content:
 | io_await | 等待时长   |
 | io_util  | 设备利用率 |
 | time     | 采集时间   |
+
+##### load
+
+| 字段   | 说明       |
+| ------ | ---------- |
+| load1  | 1秒内负载  |
+| load5  | 5秒内负载  |
+| load15 | 15秒内负载 |
+| time   | 采集时间   |
+
+##### mem
+
+| 字段      | 说明                 |
+| --------- | -------------------- |
+| mem_total | 内存总量（字节）     |
+| mem_free  | 内存剩余量（字节）   |
+| mem_used  | 内存已用量（字节）   |
+| mem_buff  | 内存BUFF用量（字节） |
+| mem_util  | 内存利用率（百分比） |
+| mem_cache | 内存cache量（字节）  |
+| time      | 采集时间             |
+
+##### cpu
+
+| 字段      | 说明                             |
+| --------- | -------------------------------- |
+| cpu_user  | cpu用户利用率，百分比需要除以100 |
+| cpu_sys   | cpu系统利用率，百分比需要除以100 |
+| cpu_wait  | CPU等待                          |
+| cpu_steal | cpu steal                        |
+| cpu_idle  | cpu空闲率，百分比需要除以100     |
+| cpu_util  | cpu总利用率                      |
+| time      | 采集时间                         |
+
+##### net
+
+| 字段        | 说明       |
+| ----------- | ---------- |
+| interface   | 接口名称   |
+| in_bytes    | 入字节数   |
+| in_packets  | 入数据包数 |
+| in_errors   | 入错误包   |
+| in_drops    | 入丢包数量 |
+| out_bytes   | 出字节     |
+| out_packets | 出数据包   |
+| out_errors  | 出错误     |
+| out_drops   | 出丢包     |
+| time        | 采集时间   |
+
+##### tcp session
+
+| 字段            | 说明              |
+| --------------- | ----------------- |
+| tcp_active      | tcp主动向外连次数 |
+| tcp_passive     | tcp被动连接次数   |
+| tcp_inseg       | tcp in segments   |
+| tcp_outseg      | tcp out segments  |
+| tcp_established | tcp已建立会话数   |
+| tcp_retrans     | tcp重传次数       |
+| time            | 采集时间          |
 
 
 
@@ -388,8 +450,8 @@ response content-type: application/json
 
 request body:
 {
-    "ip": "192.168.100.2",
-    "netmask": "255.255.255.0",
+    "dst": "192.168.100.0/24",
+    "gateway": "192.168.3.1",
     "ifname": "eth0"
 }
 
@@ -409,8 +471,7 @@ faild:
 
 | 参数        | 必选 | 说明         |
 | ----------- | ---- | ---------- |
-| dst | 是   | IP地址 |
-| netmask | 否   | 如果目标网段采用网段/前缀格式，则该字段可以省略 |
+| dst | 是   | 目标网段 |
 | gateway | 是   | 网关地址 |
 | ifname | 是   | 接口名称 |
 | table | 否   | 是否时写入默认路由表，值为"main"时写入默认路由表，否则写入以接口ID为索引的路由表|

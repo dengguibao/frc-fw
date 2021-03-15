@@ -55,7 +55,8 @@ def set_ip_address_endpoint(request):
         }, status=status.HTTP_400_BAD_REQUEST)
 
     ipdb = IPDB()
-    ifname_list = ipdb.by_name
+    ifname_list = ipdb.by_name.keys()
+    ipdb.release()
 
     if j['ifname'] not in ifname_list:
         return Response({
@@ -84,7 +85,6 @@ def set_ip_address_endpoint(request):
         json_success['msg'] = e.args[1] if len(e.args) >= 2 else str(e.args)
     finally:
         ipr.close()
-        ipdb.release()
     return Response(json_success, status_code)
 
 
@@ -99,42 +99,46 @@ def set_route_endpoint(request):
             'msg': 'request body error!'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    data = verify_necessary_field(j, ('*dst', '*gateway', '*ifname'))
+    data = verify_necessary_field(j, ('*dst', '*gateway', '*ifname', 'table'))
 
-    if not data or not verify_ip(j['gateway']):
+    if not data or not verify_ip(data['gateway']):
         return Response({
             'code': 1,
             'msg': 'field format error, or some required field mission!'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    if not verify_prefix_mode_net(j['dst']):
-        if not verify_ip(j['dst']) or 'netmask' not in j or not verify_netmask(j['netmask']):
-            return Response({
-                'code': 1,
-                'msg': 'dest net format error!'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        if verify_netmask(j['netmask']):
-            dst = '%s/%s' % (j['dst'], ip2MaskPrefix(j['netmask']))
-        else:
-            dst = '%s/%s' % (j['dst'], j['netmask'])
-    else:
-        dst = j['dst']
+    if not verify_prefix_mode_net(data['dst']):
+        return Response({
+            'code': 1,
+            'msg': 'dest net format error!'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    #     if not verify_ip(j['dst']) or 'netmask' not in j or not verify_netmask(j['netmask']):
+    #         return Response({
+    #             'code': 1,
+    #             'msg': 'dest net format error!'
+    #         }, status=status.HTTP_400_BAD_REQUEST)
+    #     if verify_netmask(j['netmask']):
+    #         dst = '%s/%s' % (j['dst'], ip2MaskPrefix(j['netmask']))
+    #     else:
+    #         dst = '%s/%s' % (j['dst'], j['netmask'])
+    # else:
+    #     dst = j['dst']
 
     ipdb = IPDB()
     ifname_list = ipdb.by_name
 
     ipr = IPRoute()
 
-    if j['ifname'] not in ifname_list:
+    if data['ifname'] not in ifname_list:
         return Response({
             'code': 1,
             'msg': 'error interface name'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    if 'table' in j and j['table'] != 'main':
-        j['table'] = ipr.link_lookup(ifname=j['ifname'].strip())[0]
+    if 'table' in data and data['table'] != 'main':
+        data['table'] = ipr.link_lookup(ifname=j['ifname'].strip())[0]
     else:
-        j['table'] = 254
+        data['table'] = 254
 
     success_json = {
         'code': 0,
@@ -152,7 +156,7 @@ def set_route_endpoint(request):
     # print(dst, j['gateway'])
 
     try:
-        ipr.route(command, dst=dst, gateway=j['gateway'], table=j['table'], dev=j['ifname'])
+        ipr.route(command, dst=data['dst'], gateway=data['gateway'], table=data['table'], dev=data['ifname'])
     except Exception as e:
         success_json['code'] = 1
         success_json['msg'] = e.args[1] if len(e.args) >= 2 else str(e.args)
