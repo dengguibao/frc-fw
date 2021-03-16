@@ -10,7 +10,8 @@ from common.functions import (
     verify_ip,
     verify_port,
     verify_necessary_field,
-    verify_prefix_mode_net
+    verify_prefix_mode_net,
+    verify_ip_range,
 )
 
 
@@ -142,6 +143,7 @@ def insert_rule(rule_type: str, post_data: dict, action: str, target_action: tup
                 'src', 'dst', 'comment',
                 'dport', 'sport',
                 'in_interface', '*target',
+                'src_range', 'dst_range',
                 'to_source', 'to_port'
             ),
             'table': 'nat'
@@ -161,6 +163,7 @@ def insert_rule(rule_type: str, post_data: dict, action: str, target_action: tup
                 '*chain_group_name', 'protocol',
                 'src', 'dst', 'comment',
                 'dport', 'sport',
+                'src_range', 'dst_range',
                 'in_interface', '*target',
             ),
             'table': 'filter'
@@ -253,6 +256,18 @@ def build_rule(data: dict, target_action: tuple) -> dict:
             'msg': 'protocol error, only support tcp or udp!'
         }
 
+    if 'src_range' in data and not verify_ip_range(data['src_range']):
+        return {
+            'code': 1,
+            'msg': 'range of source address format error!'
+        }
+
+    if 'dst_range' in data and not verify_ip_range(data['dst_range']):
+        return {
+            'code': 1,
+            'msg': 'range of destination address format error!'
+        }
+
     if ('src' in data and not verify_prefix_mode_net(data['src'])) \
             or ('dst' in data and not verify_prefix_mode_net(data['dst'])):
         return {
@@ -296,6 +311,18 @@ def build_rule(data: dict, target_action: tuple) -> dict:
         return {
             'code': 1,
             'msg': 'to_destination field format error!'
+        }
+
+    if 'src' in data and 'src_range' in data:
+        return {
+            'code': 1,
+            'msg': 'src and src_range field conflict!'
+        }
+
+    if 'dst' in data and 'dst_range' in data:
+        return {
+            'code': 1,
+            'msg': 'dst and dst_range field conflict!'
         }
 
     r = {
@@ -350,6 +377,12 @@ def build_rule(data: dict, target_action: tuple) -> dict:
         r['comment'] = {
             'comment': data['comment']
         }
+
+    if 'src_range' in data:
+        r['src_range'] = data['src_range']
+
+    if 'dst_range' in data:
+        r['dst_range'] = data['dst_range']
 
     # print(r)
     return r

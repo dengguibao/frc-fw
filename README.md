@@ -631,6 +631,8 @@ response:
 | chain_group_name | 是   | 链组名称，通过api接口查询得到，group_type=snat(查询参数)     |
 | src              | 否   | 源地址，格式为 a.b.c.d/prefixlen                             |
 | dst              | 否   | 目标地址，格式为 a.b.c.d/prefixlen                           |
+| src_range        | 否   | 范围源地址，格式为 a.b.c.d-a.b.c.e，与src字段冲突            |
+| dst_range        | 否   | 范围目的地址，格式为 a.b.c.d-a.b.c.e，与dst冲突              |
 | protocol         | 否   | 协议，目前仅支持tcp,udp, 当指定dport,sport参数后，该字段为必选 |
 | sport            | 否   | 源端口                                                       |
 | dport            | 否   | 目标端口                                                     |
@@ -642,8 +644,6 @@ response:
 
 
 #### 设置转发规则
-
-#### 
 
 ```text
 method: POST
@@ -674,6 +674,8 @@ response:
 | chain_group_name | 是   | 链组名称，通过api接口查询得到，group_type=snat(查询参数)     |
 | src              | 否   | 源地址，格式为 a.b.c.d/prefixlen                             |
 | dst              | 否   | 目标地址，格式为 a.b.c.d/prefixlen                           |
+| src_range        | 否   | 范围源地址，格式为 a.b.c.d-a.b.c.e，与src字段冲突            |
+| dst_range        | 否   | 范围目的地址，格式为 a.b.c.d-a.b.c.e，与dst冲突              |
 | protocol         | 否   | 协议，目前仅支持tcp,udp, 当指定dport,sport参数后，该字段为必选 |
 | sport            | 否   | 源端口                                                       |
 | dport            | 否   | 目标端口                                                     |

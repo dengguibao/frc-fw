@@ -114,6 +114,25 @@ def prefix2NetMask(prefix: int):
     return '.'.join(field_list)
 
 
+def verify_ip_range(ip_range: str) -> bool:
+    if '-' not in ip_range:
+        return False
+
+    ip = ip_range.split('-')
+    if len(ip) != 2:
+        return False
+
+    ip1 = ip[0]
+    ip2 = ip[1]
+    if not verify_ip(ip1) or not verify_ip(ip2):
+        return False
+
+    if int(ip1.split('.')[-1]) > int(ip2.split('.')[-1]):
+        return False
+
+    return True
+
+
 def verify_ip(ip: str) -> bool:
     """
     verify ip whether is a invalid ip
