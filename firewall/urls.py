@@ -15,13 +15,13 @@ Including another URLconf
 """
 # from django.contrib import admin
 from django.urls import path, include
-from .view import read_api_ref_endpoint, user_login_endpoint
+from .view import read_api_ref_endpoint
 
 urlpatterns = [
     # path('admin/', admin.site.urls),
     path('api/serverInfo/', include('collect.urls')),
     path('api/config/', include('config.urls')),
     path('api-doc', read_api_ref_endpoint),
-    path('api/auth/user_login', user_login_endpoint)
+    path('api/auth/', include('auth.urls'))
 
 ]

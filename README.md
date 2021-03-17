@@ -192,12 +192,53 @@ response:
 
 
 
+#### 读取所有路由策略(rule)
+
+```text
+method: GET
+get: /api/config/ipRoute/getAllIpRule
+response content-type: applicaion/json
+
+response:
+{
+    "code": 0,
+    "msg": "success",
+    "data": [
+        {
+            "from": "0.0.0.0/0",
+            "to": "0.0.0.0/0",
+            "tos": "0",
+            "table_name": "default",
+            "priority": "0",
+            "table": "255"
+        }
+    ]
+}
+
+
+```
+
+返回值解释
+
+| 字段       | 说明                     |
+| ---------- | ------------------------ |
+| from       | 源地址                   |
+| to         | 目标地址                 |
+| tos        | 服务类型 type of service |
+| table_name | 表应的表名，即接口名称   |
+| priority   | 优先级                   |
+| table      | Table id                 |
+
+
+
+
+
 #### 读取系统静态路由表
 
 ```
 method: GET
 get: /api/serverInfo/ipRoute/getStaticRouteTable[?interface_index=1]
-return content-type: application/json
+response content-type: application/json
 
 response:
 {
@@ -236,7 +277,7 @@ response:
 
 | 字段        | 可选 | 说明                   |
 | ---------- | --- | -----------------|
-| interface_index | 否 | 网卡接口索止编号           |
+| interface_index | 否 | 网卡接口索止编号 |
 
 
 返回值解释
@@ -382,13 +423,13 @@ response:
 
 ```text
 method: POST
-post: /api/config/interface/setInterface
+post: /api/config/interface/setIfState
 response content-type: application/json
 
 request:
 {
     "ifname": "lo",
-    "status": "up"
+    "state": "up"
 }
 
 response:
@@ -403,13 +444,13 @@ response:
 | 参数        | 必选 | 说明         |
 | ----------- | ---- | ---------- |
 | ifanme | 是   | 接口名称 |
-| status | 是   | 接口状态 |
+| state | 是   | 接口状态,可选值为up down |
 
 #### 配置接口IP地址
 
 ```text
 method: POST
-post: /api/config/ipRoute/setAddress
+post: /api/config/ipRoute/setIpAddress
 
 request body:
 {
@@ -474,15 +515,15 @@ faild:
 | dst | 是   | 目标网段 |
 | gateway | 是   | 网关地址 |
 | ifname | 是   | 接口名称 |
-| table | 否   | 是否时写入默认路由表，值为"main"时写入默认路由表，否则写入以接口ID为索引的路由表|
+| table | 否   | 值为main、other，当值为main时，写入路由至默认路由表，否则写入以接口ID为索引的路由表 |
 
 
 
-#### 配置策略路由
+#### 配置路由策略（rule）
 
 ```text
 method: POST
-post: /api/config/ipRoute/setPolicyRoute
+post: /api/config/ipRoute/setRule
 response content-type: application/json
 
 request body:
@@ -497,7 +538,7 @@ success:
     "msg": 'success'
 }
 
-faild:
+failed:
 {
     "code": 1,
     "msg": 'error reason'
@@ -509,9 +550,9 @@ faild:
 | 参数        | 必选 | 说明         |
 | ----------- | ---- | ---------- |
 | dst | 否   | 目标地址，格式为192.168.100.0/24或192.168.100.0 |
-| dst | 否   | 源地址，格式为192.168.100.0/24或192.168.100.0 |
-| src_len | 否 | 源地址掩码长度，如果源标地址，采用网段/前缀格式，则该字段可以省略 |
-| dst_len | 否 | 目标地址掩长度，如果目标地址标，采用网段/前缀格式，则该字段可以省略 |
+| src | 是   | 源地址，格式为192.168.100.0/24或192.168.100.0 |
+| src_len | 否 | 源地址掩码长度，如果源标地址，采用网段/前缀格式，则该字段可以省略，否则为掩码前缀（数字格式） |
+| dst_len | 否 | 目标地址掩长度，如果目标地址标，采用网段/前缀格式，则该字段可以省略，否则为掩码前缀（数字格式） |
 | priority | 否 | 规则优先级 |
 | ifname | 是 | 接口名称,将该规则写入对应的接口索引路由表 |
 | iifname | 否 | 如果目标网段采用网段/前缀格式，则该字段可以省略 |
@@ -631,8 +672,8 @@ response:
 | chain_group_name | 是   | 链组名称，通过api接口查询得到，group_type=snat(查询参数)     |
 | src              | 否   | 源地址，格式为 a.b.c.d/prefixlen                             |
 | dst              | 否   | 目标地址，格式为 a.b.c.d/prefixlen                           |
-| src_range        | 否   | 范围源地址，格式为 a.b.c.d-a.b.c.e，与src字段冲突            |
-| dst_range        | 否   | 范围目的地址，格式为 a.b.c.d-a.b.c.e，与dst冲突              |
+| src_range        | 否   | 范围源地址，格式为 a.b.c.d-a.b.c.e，与src字段冲突，src_range与dst_range冲突 |
+| dst_range        | 否   | 范围目的地址，格式为 a.b.c.d-a.b.c.e，与dst冲突，src_range与dst_range冲突 |
 | protocol         | 否   | 协议，目前仅支持tcp,udp, 当指定dport,sport参数后，该字段为必选 |
 | sport            | 否   | 源端口                                                       |
 | dport            | 否   | 目标端口                                                     |
@@ -674,8 +715,8 @@ response:
 | chain_group_name | 是   | 链组名称，通过api接口查询得到，group_type=snat(查询参数)     |
 | src              | 否   | 源地址，格式为 a.b.c.d/prefixlen                             |
 | dst              | 否   | 目标地址，格式为 a.b.c.d/prefixlen                           |
-| src_range        | 否   | 范围源地址，格式为 a.b.c.d-a.b.c.e，与src字段冲突            |
-| dst_range        | 否   | 范围目的地址，格式为 a.b.c.d-a.b.c.e，与dst冲突              |
+| src_range        | 否   | 范围源地址，格式为 a.b.c.d-a.b.c.e，与src字段冲突，src_range与dst_range冲突 |
+| dst_range        | 否   | 范围目的地址，格式为 a.b.c.d-a.b.c.e，与dst冲突，src_range与dst_range冲突 |
 | protocol         | 否   | 协议，目前仅支持tcp,udp, 当指定dport,sport参数后，该字段为必选 |
 | sport            | 否   | 源端口                                                       |
 | dport            | 否   | 目标端口                                                     |

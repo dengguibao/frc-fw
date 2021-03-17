@@ -9,9 +9,11 @@ from pyroute2 import IPDB
 from common.functions import (
     verify_ip,
     verify_port,
-    verify_necessary_field,
-    verify_prefix_mode_net,
     verify_ip_range,
+    verify_protocol,
+    verify_interface_name,
+    verify_ip_addr,
+    verify_field,
 )
 
 
@@ -26,24 +28,36 @@ def set_chain_group_endpoint(request):
             'msg': 'request body error!'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    data = verify_necessary_field(j, ('*chain_name', '*table_name', 'nat_mode'))
-    if not data:
+    fields = (
+        ('*chain_name', str, None),
+        ('*table_name', str, None),
+        ('nat_mode', str, None),
+    )
+
+    data = verify_field(j, fields)
+
+    if not isinstance(data, dict):
         return Response({
             'code': 1,
-            'msg': 'some necessary field is mission!'
+            'msg': data
         }, status=status.HTTP_400_BAD_REQUEST)
 
     if data['table_name'] not in ('nat', 'filter'):
         return Response({
             'code': 1,
-            'msg': 'table type error!'
+            'msg': 'the table name mast be nat or filter!'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    if (data['table_name'] == 'nat' and 'nat_mode' not in data) \
-            or data['nat_mode'] not in ('snat', 'dnat'):
+    if data['table_name'] == 'nat' and 'nat_mode' not in data:
         return Response({
             'code': 1,
             'msg': 'nat chain must be specific the nat_mode field!'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    if 'nat_mode' in data and data['nat_mode'] not in ('snat', 'dnat'):
+        return Response({
+            'code': 1,
+            'msg': 'the nat_mode field value must be snat or dnat!'
         }, status=status.HTTP_400_BAD_REQUEST)
 
     rule = {
@@ -136,50 +150,69 @@ def set_rule_endpoint(request, rule_type):
 
 
 def insert_rule(rule_type: str, post_data: dict, action: str, target_action: tuple) -> dict:
-    necessary_field = {
+    table_field = {
         'snat': {
-            'field': (
-                '*chain_group_name', 'protocol',
-                'src', 'dst', 'comment',
-                'dport', 'sport',
-                'in_interface', '*target',
-                'src_range', 'dst_range',
-                'to_source', 'to_port'
+            'fields': (
+                ('*chain_group_name', str, None),
+                ('protocol', str, verify_protocol),
+                ('src', str, verify_ip),
+                ('dst', str, verify_ip),
+                ('comment', str, None),
+                ('dport', str, verify_port),
+                ('sport', str, verify_port),
+                ('in_interface', str, verify_interface_name),
+                ('*target', str, None),
+                ('src_range', str, verify_ip_range),
+                ('dst_range', str, verify_ip_range),
+                ('to_source', str, verify_ip_addr),
+                ('to_port', str, verify_port),
             ),
             'table': 'nat'
         },
         'dnat': {
-            'field': (
-                '*chain_group_name', 'protocol',
-                'src', 'dst', 'comment',
-                'dport', 'sport',
-                'in_interface', '*target',
-                'to_destination', 'to_port'
+            'fields': (
+                ('*chain_group_name', str, None),
+                ('protocol', str, verify_protocol),
+                ('src', str, verify_ip),
+                ('dst', str, verify_ip),
+                ('comment', str, None),
+                ('dport', str, verify_port),
+                ('sport', str, verify_port),
+                ('in_interface', str, verify_interface_name),
+                ('*target', str, None),
+                ('to_destination', str, verify_ip_addr),
+                ('to_port', str, verify_port)
             ),
             'table': 'nat'
         },
         'filter': {
-            'field': (
-                '*chain_group_name', 'protocol',
-                'src', 'dst', 'comment',
-                'dport', 'sport',
-                'src_range', 'dst_range',
-                'in_interface', '*target',
+            'fields': (
+                ('*chain_group_name', str, None),
+                ('protocol', str, verify_protocol),
+                ('src', str, verify_ip),
+                ('dst', str, verify_ip),
+                ('comment', str, None),
+                ('dport', str, verify_port),
+                ('sport', str, verify_port),
+                ('src_range', str, verify_ip_range),
+                ('dst_range', str, verify_ip_range),
+                ('in_interface', str, verify_interface_name),
+                ('*target', str, None),
             ),
             'table': 'filter'
         }
     }
-    if rule_type not in necessary_field:
+    if rule_type not in table_field:
         return {
             'code': 1,
-            'msg': 'inert rule type is not nat or filter'
+            'msg': 'inert rule table is not nat or filter'
         }
 
-    data = verify_necessary_field(post_data, necessary_field[rule_type]['field'])
-    if not data:
+    data = verify_field(post_data, table_field[rule_type]['fields'])
+    if not isinstance(data, dict):
         return {
             'code': 1,
-            'msg': "necessary field verify failed!"
+            'msg': data
         }
 
     chain_group_list = get_chain_groups(rule_type)
@@ -201,10 +234,10 @@ def insert_rule(rule_type: str, post_data: dict, action: str, target_action: tup
     try:
 
         if action.upper() == 'POST':
-            iptc.easy.insert_rule(necessary_field[rule_type]['table'], data['chain_group_name'], rule_d=r)
+            iptc.easy.insert_rule(table_field[rule_type]['table'], data['chain_group_name'], rule_d=r)
 
         if action.upper() == 'DELETE':
-            iptc.easy.delete_rule(necessary_field[rule_type]['table'], data['chain_group_name'], rule_d=r)
+            iptc.easy.delete_rule(table_field[rule_type]['table'], data['chain_group_name'], rule_d=r)
 
     except Exception as e:
         return {
@@ -219,10 +252,11 @@ def insert_rule(rule_type: str, post_data: dict, action: str, target_action: tup
 
 
 def build_rule(data: dict, target_action: tuple) -> dict:
+
     if 'target' in data and data['target'] not in target_action:
         return {
             'code': 1,
-            'msg': 'target error!'
+            'msg': 'target not in %s' % str(target_action)
         }
 
     if data['target'] == 'SNAT' and 'to_source' not in data:
@@ -244,73 +278,10 @@ def build_rule(data: dict, target_action: tuple) -> dict:
             'msg': 'redirect mode mast be specific to_port field!'
         }
 
-    if 'to_port' in data and not verify_port(data['to_port']):
-        return {
-            'code': 1,
-            'msg': 'to_port format verify failed!'
-        }
-
-    if 'protocol' in data and data['protocol'] not in ('tcp', 'udp','icmp','gre','ah','esp','ospf','sctp'):
-        return {
-            'code': 1,
-            'msg': 'protocol error, only support tcp or udp!'
-        }
-
-    if 'src_range' in data and not verify_ip_range(data['src_range']):
-        return {
-            'code': 1,
-            'msg': 'range of source address format error!'
-        }
-
-    if 'dst_range' in data and not verify_ip_range(data['dst_range']):
-        return {
-            'code': 1,
-            'msg': 'range of destination address format error!'
-        }
-
-    if ('src' in data and not verify_prefix_mode_net(data['src'])) \
-            or ('dst' in data and not verify_prefix_mode_net(data['dst'])):
-        return {
-            'code': 1,
-            'msg': 'source address or destination address format error!'
-        }
-
-    if 'sport' in data and not verify_port(data['sport']):
-        return {
-            'code': 1,
-            'msg': 'source port format error!'
-        }
-
-    if 'dport' in data and not verify_port(data['dport']):
-        return {
-            'code': 1,
-            'msg': 'destination port format error!'
-        }
-
     if ('dport' in data and 'protocol' not in data) or ('sport' in data and 'protocol' not in data):
         return {
             'code': 1,
             'msg': 'specific source port or destination port, both protocol must be specified'
-        }
-
-    if_list = get_all_interfaces_list()
-    if 'in_interface' in data and data['in_interface'] not in if_list:
-        return {
-            'code': 1,
-            'msg': 'in interface error!'
-        }
-
-    if 'to_source' in data and not verify_ip(data['to_source']):
-        return {
-            'code': 1,
-            'msg': 'snat to source address error!'
-        }
-
-    if 'to_destination' in data and \
-            (not verify_prefix_mode_net(data['to_destination']) and not verify_ip(data['to_destination'])):
-        return {
-            'code': 1,
-            'msg': 'to_destination field format error!'
         }
 
     if 'src' in data and 'src_range' in data:
@@ -323,6 +294,12 @@ def build_rule(data: dict, target_action: tuple) -> dict:
         return {
             'code': 1,
             'msg': 'dst and dst_range field conflict!'
+        }
+
+    if 'src_range' in data and 'dst_range' in data:
+        return {
+            'code': 1,
+            'msg': 'dst_range and src_range field conflict!'
         }
 
     r = {
@@ -379,10 +356,14 @@ def build_rule(data: dict, target_action: tuple) -> dict:
         }
 
     if 'src_range' in data:
-        r['src_range'] = data['src_range']
+        r['iprange'] = {
+            'src_range': data['src_range']
+        }
 
     if 'dst_range' in data:
-        r['dst_range'] = data['dst_range']
+        r['iprange'] = {
+            'dst_range': data['dst_range']
+        }
 
     # print(r)
     return r

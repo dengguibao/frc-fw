@@ -8,9 +8,51 @@ from common.functions import (
     verify_netmask,
     ip2MaskPrefix,
     verify_ip,
-    verify_necessary_field,
-    verify_prefix_mode_net
+    verify_prefix_mode_net,
+    verify_ip_addr,
+    verify_field,
+    verify_interface_name,
+    verify_prefix,
+    verify_interface_state,
 )
+
+
+@api_view(('GET',))
+def get_all_ip_rule_endpoint(request):
+    data = []
+    all_if = IPDB().by_name.keys()
+    sys_table_name = {
+        253: 'local',
+        254: 'main',
+        255: 'default',
+    }
+    with IPRoute() as x:
+        for i in x.rule('dump'):
+            buf = {}
+            dst_len = i['dst_len']
+            src_len = i['src_len']
+            table = i['table']
+            tos = i['tos']
+            dst_addr = i.get_attr('FRA_DST') if i.get_attr('FRA_DST') else '0.0.0.0'
+            src_addr = i.get_attr('FRA_SRC') if i.get_attr('FRA_SRC') else '0.0.0.0'
+            priority = i.get_attr('FRA_PRIORITY')
+
+            buf['from'] = f'{src_addr}/{src_len}'
+            buf['to'] = f'{dst_addr}/{dst_len}'
+            buf['tos'] = '%s' % tos
+            print(table)
+            buf['table_name'] =sys_table_name[table] if table in (253, 254, 255) else all_if[table-1]
+
+            buf['priority'] = str(priority) if priority else '0'
+            buf['table'] = '%s' % table
+            data.append(buf)
+            del buf
+
+    return Response({
+        'code': 0,
+        'msg': 'success',
+        'data': data
+    })
 
 
 @api_view(['POST', 'DELETE'])
@@ -24,48 +66,21 @@ def set_ip_address_endpoint(request):
             'msg': 'request body error!'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    data = verify_necessary_field(j, ('*ip', '*netmask', '*ifname'))
+    fields = (
+        ('*ip', str, verify_ip_addr),
+        ('*netmask', str, verify_netmask),
+        ('*ifname', str, verify_interface_name)
+    )
 
-    if not data:
+    data = verify_field(j, fields)
+    if not isinstance(data, dict):
         return Response({
             'code': 1,
-            'msg': 'Some required fields are missing'
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-    if not verify_ip(j['ip']):
-        return Response({
-            'code': 1,
-            'msg': 'ip format error'
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-    try:
-        prefix = int(j['netmask'])
-    except:
-        if not verify_netmask(j['netmask']):
-            return Response({
-                'code': 1,
-                'msg': 'mask format error'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        prefix = ip2MaskPrefix(j['netmask'].strip())
-
-    if not prefix or prefix > 32:
-        return Response({
-            'code': 1,
-            'msg': 'mask format error'
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-    ipdb = IPDB()
-    ifname_list = ipdb.by_name.keys()
-    ipdb.release()
-
-    if j['ifname'] not in ifname_list:
-        return Response({
-            'code': 1,
-            'msg': 'error interface name'
-        }, status=status.HTTP_400_BAD_REQUEST)
+            'msg': data
+        })
 
     ipr = IPRoute()
-    ifidx = ipr.link_lookup(ifname=j['ifname'].strip())[0]
+    ifidx = ipr.link_lookup(ifname=data['ifname'].strip())[0]
 
     json_success = {
         'code': 0,
@@ -79,7 +94,7 @@ def set_ip_address_endpoint(request):
         command = 'delete'
         status_code = status.HTTP_200_OK
     try:
-        ipr.addr(command, index=ifidx, address=j['ip'].strip(), mask=prefix)
+        ipr.addr(command, index=ifidx, address=j['ip'], mask=ip2MaskPrefix(data['netmask']))
     except Exception as e:
         json_success['code'] = 1
         json_success['msg'] = e.args[1] if len(e.args) >= 2 else str(e.args)
@@ -89,7 +104,7 @@ def set_ip_address_endpoint(request):
 
 
 @api_view(['POST', 'DELETE'])
-def set_route_endpoint(request):
+def set_ip_route_endpoint(request):
     req_body = request.body
     try:
         j = json.loads(req_body.decode())
@@ -99,42 +114,21 @@ def set_route_endpoint(request):
             'msg': 'request body error!'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    data = verify_necessary_field(j, ('*dst', '*gateway', '*ifname', 'table'))
+    fields = (
+        ('*dst', str, verify_prefix_mode_net),
+        ('*gateway', str, verify_ip_addr),
+        ('*ifname', str, verify_interface_name),
+        ('table', str, None)
+    )
+    data = verify_field(j, fields)
 
-    if not data or not verify_ip(data['gateway']):
+    if not isinstance(data, dict):
         return Response({
             'code': 1,
-            'msg': 'field format error, or some required field mission!'
+            'msg': data
         }, status=status.HTTP_400_BAD_REQUEST)
-
-    if not verify_prefix_mode_net(data['dst']):
-        return Response({
-            'code': 1,
-            'msg': 'dest net format error!'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    #     if not verify_ip(j['dst']) or 'netmask' not in j or not verify_netmask(j['netmask']):
-    #         return Response({
-    #             'code': 1,
-    #             'msg': 'dest net format error!'
-    #         }, status=status.HTTP_400_BAD_REQUEST)
-    #     if verify_netmask(j['netmask']):
-    #         dst = '%s/%s' % (j['dst'], ip2MaskPrefix(j['netmask']))
-    #     else:
-    #         dst = '%s/%s' % (j['dst'], j['netmask'])
-    # else:
-    #     dst = j['dst']
-
-    ipdb = IPDB()
-    ifname_list = ipdb.by_name
 
     ipr = IPRoute()
-
-    if data['ifname'] not in ifname_list:
-        return Response({
-            'code': 1,
-            'msg': 'error interface name'
-        }, status=status.HTTP_400_BAD_REQUEST)
-
     if 'table' in data and data['table'] != 'main':
         data['table'] = ipr.link_lookup(ifname=j['ifname'].strip())[0]
     else:
@@ -153,21 +147,19 @@ def set_route_endpoint(request):
         status_code = status.HTTP_200_OK
         command = 'delete'
 
-    # print(dst, j['gateway'])
-
     try:
         ipr.route(command, dst=data['dst'], gateway=data['gateway'], table=data['table'], dev=data['ifname'])
     except Exception as e:
         success_json['code'] = 1
         success_json['msg'] = e.args[1] if len(e.args) >= 2 else str(e.args)
+        status_code = status.HTTP_400_BAD_REQUEST
     finally:
         ipr.close()
-        ipdb.release()
     return Response(success_json, status_code)
 
 
 @api_view(['POST', 'DELETE'])
-def set_policy_route_endpoint(request):
+def set_ip_rule_endpoint(request):
     req_body = request.body
     try:
         j = json.loads(req_body.decode())
@@ -177,68 +169,22 @@ def set_policy_route_endpoint(request):
             'msg': 'request body error!'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    data = verify_necessary_field(j, ('src', 'dst', 'src_len', 'dst_len', 'priority', 'tos', '*ifname'))
+    fields = (
+        ('*ifname', str, verify_interface_name),
+        ('dst', str, verify_ip),
+        ('*src', str, verify_ip),
+        ('src_len', int, verify_prefix),
+        ('dst_len', int, verify_prefix),
+        ('priority', int, None),
+        ('tos', str, None)
+    )
 
-    if not data:
+    data = verify_field(j, fields)
+
+    if not isinstance(data, dict):
         return Response({
             'code': 1,
-            'msg': 'some required field is mission!'
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-    if ('src' in j and (not verify_ip(j['src']) and not verify_prefix_mode_net(j['src']))) \
-            or ('dst' in j and (not verify_ip(j['dst']) and not verify_prefix_mode_net(j['dst']))):
-        return Response({
-            'code': 1,
-            'msg': 'ip address format error'
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-    if 'src_len' in j:
-        try:
-            src_len = int(j['src_len'])
-        except:
-            return Response({
-                'code': 1,
-                'msg': "prefix of netmask error!"
-            }, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            if 0 < src_len > 32:
-                return Response({
-                    'code': 1,
-                    'msg': "prefix value error!"
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-    if 'dst_len' in j:
-        try:
-            dst_len = int(j['dst_len'])
-        except:
-            return Response({
-                'code': 1,
-                'msg': "prefix of netmask error!"
-            }, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            if 0 < dst_len > 32:
-                return Response({
-                    'code': 1,
-                    'msg': "prefix value error!"
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-    if 'priority' in j:
-        try:
-            pri = int(j['priority'])
-            data['priority'] = pri
-        except:
-            return Response({
-                'code': 1,
-                'msg': "priority error!"
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-    ipdb = IPDB()
-    ifname_list = ipdb.by_name
-
-    if j['ifname'] not in ifname_list:
-        return Response({
-            'code': 1,
-            'msg': "error ifname!"
+            'msg': data
         }, status=status.HTTP_400_BAD_REQUEST)
 
     ipr = IPRoute()
@@ -267,7 +213,6 @@ def set_policy_route_endpoint(request):
         return_json['msg'] = 'success'
     finally:
         ipr.close()
-        ipdb.release()
 
     return Response(return_json, status_code)
 
@@ -283,28 +228,22 @@ def set_interface_state_endpoint(request):
             'msg': 'request body error!'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    data = verify_necessary_field(j, ('*ifname', '*state'))
-    if not data:
-        return Response({
-            'code': 1,
-            'msg': 'some required field is mission!'
-        }, status=status.HTTP_400_BAD_REQUEST)
+    fields = (
+        ('*ifname', str, verify_interface_name),
+        ('*state', str, verify_interface_state),
+    )
 
-    if data['state'].lower() not in ('up', 'down'):
+    data = verify_field(j, fields)
+
+    if not isinstance(data, dict):
         return Response({
             'code': 1,
-            'msg': 'interface status value is wrong!'
+            'msg': data
         }, status=status.HTTP_400_BAD_REQUEST)
 
     ipdb = IPDB()
     ifdb = ipdb.interfaces
     ifname = data['ifname']
-
-    if data['ifname'] not in ifdb:
-        return Response({
-            'code': 1,
-            'msg': 'ifname value is wrong!'
-        }, status=status.HTTP_400_BAD_REQUEST)
 
     if ifdb[ifname]['state'] == data['state']:
         return Response({

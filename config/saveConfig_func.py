@@ -40,42 +40,42 @@ def all_route_table():
     return data
 
 
-def all_rule_table():
-    data = []
-    x = IPRoute()
-    for i in x.rule('dump'):
-        # print(i)
-        buf = {}
-
-        dst_len = i['dst_len']
-        src_len = i['src_len']
-        table = i['table']
-        tos = i['tos']
-        dst_addr = i.get_attr('FRA_DST')
-        src_addr = i.get_attr('FRA_SRC') if i.get_attr('FRA_SRC') else '0.0.0.0'
-        priority = i.get_attr('FRA_PRIORITY')
-
-        if src_addr:
-            buf['from'] = f'{src_addr}/{src_len}'
-
-        if dst_addr:
-            buf['to'] = f'{dst_addr}/{dst_len}'
-
-        if tos:
-            buf['tos'] = '%s' % tos
-
-        buf['priority'] = str(priority) if priority else '0'
-        buf['table'] = '%s' % table
-
-        cmd = ['ip', 'rule', 'add']
-        for b in buf.items():
-            cmd.append(' '.join(b))
-
-        data.append(' '.join(cmd))
-        del buf, cmd
-    x.close()
-
-    return data
+# def all_rule_table():
+#     data = []
+#     x = IPRoute()
+#     for i in x.rule('dump'):
+#         # print(i)
+#         buf = {}
+#
+#         dst_len = i['dst_len']
+#         src_len = i['src_len']
+#         table = i['table']
+#         tos = i['tos']
+#         dst_addr = i.get_attr('FRA_DST')
+#         src_addr = i.get_attr('FRA_SRC') if i.get_attr('FRA_SRC') else '0.0.0.0'
+#         priority = i.get_attr('FRA_PRIORITY')
+#
+#         if src_addr:
+#             buf['from'] = f'{src_addr}/{src_len}'
+#
+#         if dst_addr:
+#             buf['to'] = f'{dst_addr}/{dst_len}'
+#
+#         if tos:
+#             buf['tos'] = '%s' % tos
+#
+#         buf['priority'] = str(priority) if priority else '0'
+#         buf['table'] = '%s' % table
+#
+#         cmd = ['ip', 'rule', 'add']
+#         for b in buf.items():
+#             cmd.append(' '.join(b))
+#
+#         data.append(' '.join(cmd))
+#         del buf, cmd
+#     x.close()
+#
+#     return data
 
 
 def all_interface_adrr():

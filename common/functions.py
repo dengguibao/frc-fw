@@ -1,4 +1,5 @@
 import subprocess
+from pyroute2 import IPDB
 
 
 def execShell(cmd):
@@ -114,6 +115,13 @@ def prefix2NetMask(prefix: int):
     return '.'.join(field_list)
 
 
+def verify_interface_name(ifname: str) -> bool:
+    ipdb = IPDB()
+    ifname_list = ipdb.by_name.keys()
+    ipdb.release()
+    return True if ifname in ifname_list else False
+
+
 def verify_ip_range(ip_range: str) -> bool:
     if '-' not in ip_range:
         return False
@@ -133,7 +141,23 @@ def verify_ip_range(ip_range: str) -> bool:
     return True
 
 
+# def verify_table(table: str) -> bool:
+#     if not verify_interface_name(table) and table != 'main':
+#         return False
+#     return True
+
+
+def verify_interface_state(state: str) -> bool:
+    return True if state.lower() in ('up', 'down') else False
+
+
 def verify_ip(ip: str) -> bool:
+    if verify_ip_addr(ip) or verify_prefix_mode_net(ip):
+        return True
+    return False
+
+
+def verify_ip_addr(ip: str) -> bool:
     """
     verify ip whether is a invalid ip
     :param ip:
@@ -195,7 +219,7 @@ def verify_prefix_mode_net(net: str) -> bool:
     return True
 
 
-def verify_necessary_field(data: dict, field: tuple):
+def simple_verify_field(data: dict, field: tuple):
     if not isinstance(data, dict):
         return
 
@@ -227,13 +251,66 @@ def verify_necessary_field(data: dict, field: tuple):
     return False
 
 
+def verify_prefix(prefix: int):
+    return True if prefix >= 0 or prefix <= 32 else False
+
+
+def verify_protocol(protocol: str) -> bool:
+    if protocol in ('tcp', 'udp', 'icmp', 'gre', 'ah', 'esp', 'ospf', 'sctp'):
+        return True
+    return False
+
+
 def verify_port(p):
     try:
-        d = int(p)
+        if not isinstance(p, int):
+            d = int(p)
     except Exception as e:
         # print(e)
         return False
 
     if 0 < d or d > 65535:
         return str(p)
+    return False
+
+
+def verify_field(data: dict, field: tuple):
+    if not isinstance(data, dict):
+        return
+
+    buff = {}
+
+    pass_flag = False
+
+    if isinstance(field, tuple):
+        for field_name, field_type, verify_func in field:
+
+            if field_name[0] == '*':
+                field_name = field_name[1:]
+
+                if field_name not in data or not data[field_name].strip():
+                    return 'field %s is necessary and can not be empty' % field_name
+
+            if field_name not in data:
+                continue
+
+            if not isinstance(data[field_name], field_type):
+                return 'field %s type wrong!' % field_name
+
+            if verify_func and not verify_func(data[field_name]):
+                return 'field %s verify failed!' % field_name
+
+            if field_name in data:
+                pass_flag = True
+
+    if pass_flag:
+        for i, _, _ in field:
+            k = i.strip()
+            if k[0] == '*':
+                k = k[1:]
+
+            if k in data and data[k]:
+                buff[k] = data[k].strip()
+
+        return buff
     return False
