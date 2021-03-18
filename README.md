@@ -39,6 +39,29 @@ response conent:
 
 
 
+#### 读取网络转发功能
+
+```text
+method: GET
+get: /api/serverInfo/sys/getFowardState
+response content-type: application/json
+
+response:
+{
+    "code": 0,
+    "msg": "success",
+    "state": "disable"
+}
+```
+
+返回说明
+
+| 字段  | 说明                         |
+| ----- | ---------------------------- |
+| state | 状态，enable开启 disable关闭 |
+
+
+
 ### SAR活动性能指标
 
 
@@ -196,7 +219,7 @@ response:
 
 ```text
 method: GET
-get: /api/config/ipRoute/getAllIpRule
+get: /api/serverInfo/ipRoute/getAllIpRule
 response content-type: applicaion/json
 
 response:
@@ -390,7 +413,7 @@ response:
 
 ```text
 method: GET
-get: /api/config/iptables/getChainGroups?group_type=<grou_type>
+get: /api/serverInfo/iptables/getChainGroups?group_type=<grou_type>
 response content-type: application/json
 
 response:
@@ -412,6 +435,31 @@ response:
 
 
 ## Config
+
+
+
+### 系统配置
+
+
+
+#### 设置网络转发功能
+
+```text
+method: POST
+post: /api/config/sys/setFoward
+request content-type: application/json
+
+req:
+{
+	"state": "0"
+}
+```
+
+请求说明
+
+| 字段  | 必选 | 说明                    |
+| ----- | ---- | ----------------------- |
+| state | 是   | 状态，"1"开启  "0" 关闭 |
 
 
 

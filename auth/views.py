@@ -6,8 +6,11 @@ from django.contrib.auth.models import User
 import json
 from django.contrib.auth import authenticate
 
-from common.functions import (
-    simple_verify_field
+from common.verify import (
+    verify_field,
+    verify_username,
+    verify_mail,
+    verify_true_false
 )
 
 
@@ -24,14 +27,19 @@ def user_login_endpoint(request):
     except:
         return Response({
             'code': 1,
-            'msg': 'illegal request body'
+            'msg': 'illegal request, body format error'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    data = simple_verify_field(j, ('*username', '*password'))
-    if not data:
+    fields = (
+        ('*username', str, verify_username),
+        ('*password', str, None)
+    )
+
+    data = verify_field(j, fields)
+    if not isinstance(data, dict):
         return Response({
             'code': 1,
-            'msg': 'some require field is mission!'
+            'msg': data
         }, status=status.HTTP_400_BAD_REQUEST)
 
     user = authenticate(username=data['username'], password=data['password'])
@@ -62,15 +70,27 @@ def change_password_endpoint(request):
     except:
         return Response({
             'code': 1,
-            'msg': 'illegal request body'
+            'msg': 'illegal request, body format error'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    data = simple_verify_field(j, ('*username', '*password1', '*password2'))
+    fields = (
+        ('*username', str, verify_username),
+        ('*password1', str, None),
+        ('*password2', str, None)
+    )
 
-    if not data:
+    data = verify_field(j, fields)
+
+    if not isinstance(data, dict):
         return Response({
             'code': 1,
-            'msg': 'some required is mission!'
+            'msg': data
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    if data['password1'] != data['password2']:
+        return Response({
+            'code': 1,
+            'msg': 'the old and new password is not match!'
         }, status=status.HTTP_400_BAD_REQUEST)
 
     user = None
@@ -85,12 +105,6 @@ def change_password_endpoint(request):
         return Response({
             'code': 1,
             'msg': 'error username!'
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-    if data['password1'] != data['password2']:
-        return Response({
-            'code': 1,
-            'msg': 'the old and new password is not match!'
         }, status=status.HTTP_400_BAD_REQUEST)
 
     user.set_password(data['password1'])
@@ -108,29 +122,30 @@ def set_user_endpoint(request):
     except:
         return Response({
             'code': 1,
-            'msg': 'illegal request body'
+            'msg': 'illegal request, body format error'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    data = simple_verify_field(j, ('*username', '*email', '*first_name', '*last_name', 'is_superuser', 'is_active'))
+    fields = (
+        ('*username', str, verify_username),
+        ('*email', str, verify_mail),
+        ('*first_name', str, verify_username),
+        ('*last_name', str, verify_username),
+        ('is_superuser', int, verify_true_false),
+        ('is_active', int, verify_true_false)
+    )
 
-    if not data:
+    data = verify_field(j, fields)
+
+    if not isinstance(data, dict):
         return Response({
             'code': 1,
-            'msg': 'some required is mission!'
+            'msg': data,
         }, status=status.HTTP_400_BAD_REQUEST)
-
-    special_char = ('/', ' ', '[', ']', '"', '\\',)
-    for i in special_char:
-        if i in data['username'] or i in data['password']:
-            return Response({
-                'code': 1,
-                'msg': 'username or password contain special character'
-            }, status=status.HTTP_400_BAD_REQUEST)
 
     if not request.user.is_superuser:
         return Response({
             'code': 0,
-            'msg': 'success'
+            'msg': 'illegal request'
         }, status=status.HTTP_400_BAD_REQUEST)
 
     tmp = User.objects.get(username=data['username'])
@@ -160,4 +175,3 @@ def set_user_endpoint(request):
         'code': 0,
         'msg': 'success'
     }, status=status_code)
-

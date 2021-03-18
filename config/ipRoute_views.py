@@ -4,55 +4,17 @@ from rest_framework import status
 from rest_framework.response import Response
 from pyroute2 import IPRoute
 from pyroute2 import IPDB
-from common.functions import (
+from common.verify import (
     verify_netmask,
-    ip2MaskPrefix,
     verify_ip,
-    verify_prefix_mode_net,
+    verify_ip_subnet,
     verify_ip_addr,
     verify_field,
     verify_interface_name,
     verify_prefix,
     verify_interface_state,
 )
-
-
-@api_view(('GET',))
-def get_all_ip_rule_endpoint(request):
-    data = []
-    all_if = IPDB().by_name.keys()
-    sys_table_name = {
-        253: 'local',
-        254: 'main',
-        255: 'default',
-    }
-    with IPRoute() as x:
-        for i in x.rule('dump'):
-            buf = {}
-            dst_len = i['dst_len']
-            src_len = i['src_len']
-            table = i['table']
-            tos = i['tos']
-            dst_addr = i.get_attr('FRA_DST') if i.get_attr('FRA_DST') else '0.0.0.0'
-            src_addr = i.get_attr('FRA_SRC') if i.get_attr('FRA_SRC') else '0.0.0.0'
-            priority = i.get_attr('FRA_PRIORITY')
-
-            buf['from'] = f'{src_addr}/{src_len}'
-            buf['to'] = f'{dst_addr}/{dst_len}'
-            buf['tos'] = '%s' % tos
-            print(table)
-            buf['table_name'] =sys_table_name[table] if table in (253, 254, 255) else all_if[table-1]
-
-            buf['priority'] = str(priority) if priority else '0'
-            buf['table'] = '%s' % table
-            data.append(buf)
-            del buf
-
-    return Response({
-        'code': 0,
-        'msg': 'success',
-        'data': data
-    })
+from common.functions import ip2MaskPrefix
 
 
 @api_view(['POST', 'DELETE'])
@@ -63,7 +25,7 @@ def set_ip_address_endpoint(request):
     except:
         return Response({
             'code': 1,
-            'msg': 'request body error!'
+            'msg': 'illegal request, body format error!'
         }, status=status.HTTP_400_BAD_REQUEST)
 
     fields = (
@@ -111,11 +73,11 @@ def set_ip_route_endpoint(request):
     except:
         return Response({
             'code': 1,
-            'msg': 'request body error!'
+            'msg': 'illegal request, body format error'
         }, status=status.HTTP_400_BAD_REQUEST)
 
     fields = (
-        ('*dst', str, verify_prefix_mode_net),
+        ('*dst', str, verify_ip_subnet),
         ('*gateway', str, verify_ip_addr),
         ('*ifname', str, verify_interface_name),
         ('table', str, None)
@@ -166,7 +128,7 @@ def set_ip_rule_endpoint(request):
     except:
         return Response({
             'code': 1,
-            'msg': 'request body error!'
+            'msg': 'illegal request, body format error'
         }, status=status.HTTP_400_BAD_REQUEST)
 
     fields = (
@@ -225,7 +187,7 @@ def set_interface_state_endpoint(request):
     except:
         return Response({
             'code': 1,
-            'msg': 'request body error!'
+            'msg': 'illegal request, body format error'
         }, status=status.HTTP_400_BAD_REQUEST)
 
     fields = (

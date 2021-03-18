@@ -1,4 +1,3 @@
-# from collect.models import *
 from collect.serializer import *
 
 RESOURCE_MODELS = {

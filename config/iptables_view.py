@@ -6,7 +6,7 @@ from rest_framework.response import Response
 
 from pyroute2 import IPDB
 
-from common.functions import (
+from common.verify import (
     verify_ip,
     verify_port,
     verify_ip_range,
@@ -15,6 +15,7 @@ from common.functions import (
     verify_ip_addr,
     verify_field,
 )
+from common.functions import get_chain_groups
 
 
 @api_view(['POST', 'DELETE'])
@@ -25,7 +26,7 @@ def set_chain_group_endpoint(request):
     except:
         return Response({
             'code': 1,
-            'msg': 'request body error!'
+            'msg': 'illegal request, body format error'
         }, status=status.HTTP_400_BAD_REQUEST)
 
     fields = (
@@ -99,26 +100,6 @@ def set_chain_group_endpoint(request):
     }, status=status_code)
 
 
-@api_view(('GET',))
-def get_chain_groups_endpoint(request):
-    group_type = request.GET.get('group_type', None)
-    data = None
-    if group_type:
-        data = get_chain_groups(group_type)
-
-    if not isinstance(data, list):
-        return Response({
-            'code': 0,
-            'msg': 'param group_type error',
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-    return Response({
-        'code': 0,
-        'msg': 'success',
-        'data': data
-    }, status=status.HTTP_200_OK)
-
-
 @api_view(('POST', 'DELETE'))
 def set_rule_endpoint(request, rule_type):
     req_body = request.body
@@ -127,7 +108,7 @@ def set_rule_endpoint(request, rule_type):
     except:
         return Response({
             'code': 1,
-            'msg': 'request body error!'
+            'msg': 'illegal request, body format error'
         }, status=status.HTTP_400_BAD_REQUEST)
     target_list = {
         'snat': ('SNAT', 'MASQUERADE'),
@@ -367,36 +348,6 @@ def build_rule(data: dict, target_action: tuple) -> dict:
 
     # print(r)
     return r
-
-
-def get_chain_groups(group_type: str):
-    data = []
-    g_list = {
-        'snat': {
-            'table_name': 'nat',
-            'chain_name': 'POSTROUTING',
-        },
-        'dnat': {
-            'table_name': 'nat',
-            'chain_name': 'PREROUTING',
-        },
-        'filter': {
-            'table_name': 'filter',
-            'chain_name': 'FORWARD',
-        }
-    }
-    if group_type not in g_list:
-        return False
-    try:
-
-        d = iptc.easy.dump_chain(g_list[group_type]['table_name'], g_list[group_type]['chain_name'], ipv6=False)
-    except:
-        return False
-    else:
-        for i in d:
-            if 'target' in i and 'goto' in i['target']:
-                data.append(i['target']['goto'])
-    return data
 
 
 def get_all_interfaces_list() -> list:
