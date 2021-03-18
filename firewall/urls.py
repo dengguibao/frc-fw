@@ -22,6 +22,6 @@ urlpatterns = [
     path('api/serverInfo/', include('collect.urls')),
     path('api/config/', include('config.urls')),
     path('api-doc', read_api_ref_endpoint),
-    path('api/auth/', include('auth.urls'))
+    path('api/auth/', include('user.urls'))
 
 ]

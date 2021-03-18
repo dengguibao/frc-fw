@@ -10,6 +10,8 @@ build:
     - dev-ubuntu
   script:
     - pip3 install -r ./requirement.txt
+    - python3 ./manage.py makemigrations
+    - python3 ./manage.py migrate
 
 test:
   stage: test
@@ -30,6 +32,8 @@ deploy:
     - dev-ubuntu
   script:
      - cp -rf * /home/firewall/
+     - python3 ./manage.py makemigrations
+     - python3 ./manage.py migrate
      - systemctl restart firewall-web.service
      - systemctl restart firewall-collector.service
 
