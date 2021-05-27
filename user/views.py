@@ -1,17 +1,14 @@
-from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.exceptions import NotAuthenticated, ParseError
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAdminUser, AllowAny
+
 from django.contrib.auth.models import User
-import json
 from django.contrib.auth import authenticate
-import time
-from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import IsAuthenticated
 
-
+from common.verify import filter_user_data
 from common.verify import (
-    verify_field,
     verify_username,
     verify_mail,
     verify_true_false
@@ -19,50 +16,34 @@ from common.verify import (
 
 
 @api_view(('POST',))
+@permission_classes((AllowAny,))
 def user_login_endpoint(request):
     """
     user login
     """
-    try:
-        j = json.loads(request.body.decode())
-    except:
-        return Response({
-            'code': 1,
-            'msg': 'illegal request, body format error'
-        }, status=status.HTTP_400_BAD_REQUEST)
-
     fields = (
         ('*username', str, verify_username),
         ('*password', str, None)
     )
 
-    data = verify_field(j, fields)
-    if not isinstance(data, dict):
-        return Response({
-            'code': 1,
-            'msg': data
-        }, status=status.HTTP_400_BAD_REQUEST)
+    data = filter_user_data(request.body, fields)
 
     user = authenticate(username=data['username'], password=data['password'])
-    if not user and not user.is_active:
-        return Response({
-            'code': 1,
-            'msg': 'username or password is wrong!'
-        }, status=status.HTTP_400_BAD_REQUEST)
+    if not user or not user.is_active:
+        raise NotAuthenticated('username or password is wrong!')
 
-    token, create = Token.objects.get_or_create(user=user)
-
-    if not create:
-        token_create_ts = token.created.timestamp()
-        if time.time() - token_create_ts > 86400:
-            token.delete()
-            token = Token.objects.create(user=user)
+    try:
+        Token.objects.get(user=user).delete()
+    except Token.DoesNotExist:
+        pass
+    finally:
+        t, create = Token.objects.get_or_create(user=user)
 
     return Response({
         'code': 0,
         'msg': 'success',
         'data': {
-            'token': token.key,
+            'token': t.key,
             'user_id': user.pk,
             'username': user.username,
         }
@@ -70,55 +51,31 @@ def user_login_endpoint(request):
 
 
 @api_view(('POST',))
-@authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
 def change_password_endpoint(request):
     """
     if request.user is superuser then change the password of specified user, else change the password is user itself
     """
-    try:
-        j = json.loads(request.body.decode())
-    except:
-        return Response({
-            'code': 1,
-            'msg': 'illegal request, body format error'
-        }, status=status.HTTP_400_BAD_REQUEST)
-
     fields = (
         ('*username', str, verify_username),
         ('*password1', str, None),
         ('*password2', str, None)
     )
 
-    data = verify_field(j, fields)
-
-    if not isinstance(data, dict):
-        return Response({
-            'code': 1,
-            'msg': data
-        }, status=status.HTTP_400_BAD_REQUEST)
+    data = filter_user_data(request.body, fields)
 
     if data['password1'] != data['password2']:
-        return Response({
-            'code': 1,
-            'msg': 'the old and new password is not match!'
-        }, status=status.HTTP_400_BAD_REQUEST)
+        raise ParseError('the old and new password is not match!')
 
-    user = None
-    if request.user.is_superuser:
+    if request.user.is_superuser or request.user.is_staff:
         try:
             user = User.objects.get(username=data['username'])
-        except:
-            pass
+        except User.DoesNotExist:
+            user = None
     else:
         user = request.user
-        # user = User.objects.get(username='te2st')
 
     if user and user.username != data['username']:
-        return Response({
-            'code': 1,
-            'msg': 'error username!'
-        }, status=status.HTTP_400_BAD_REQUEST)
+        raise ParseError('error username!')
 
     user.set_password(data['password1'])
     user.save()
@@ -126,66 +83,41 @@ def change_password_endpoint(request):
     return Response({
         'code': 1,
         'msg': 'success'
-    }, status=status.HTTP_400_BAD_REQUEST)
+    })
 
 
 @api_view(('POST', 'DELETE'))
+@permission_classes((IsAdminUser,))
 def set_user_endpoint(request):
-    try:
-        j = json.loads(request.body.decode())
-    except:
-        return Response({
-            'code': 1,
-            'msg': 'illegal request, body format error'
-        }, status=status.HTTP_400_BAD_REQUEST)
-
     fields = (
         ('*username', str, verify_username),
         ('*email', str, verify_mail),
         ('*first_name', str, verify_username),
         ('*last_name', str, verify_username),
-        ('is_superuser', int, verify_true_false),
+        ('is_staff', int, verify_true_false),
         ('is_active', int, verify_true_false)
     )
 
-    data = verify_field(j, fields)
-
-    if not isinstance(data, dict):
-        return Response({
-            'code': 1,
-            'msg': data,
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-    # if not request.user.is_superuser:
-    #     return Response({
-    #         'code': 0,
-    #         'msg': 'illegal request'
-    #     }, status=status.HTTP_400_BAD_REQUEST)
+    data = filter_user_data(request.body, fields)
 
     try:
         tmp = User.objects.get(username=data['username'])
-    except:
+        del data['username']
+    except User.DoesNotExist:
         tmp = None
 
     if request.method == 'POST':
         if not tmp:
             user = User.objects.create_user(**data)
-            status_code = status.HTTP_201_CREATED
             # new add user, create token
             Token.objects.create(user=user)
         else:
             User.objects.update(**data)
-            status_code = status.HTTP_200_OK
 
     if request.method == 'DELETE':
         if not tmp:
-            status_code = status.HTTP_400_BAD_REQUEST
-            return Response({
-                'code': 1,
-                'msg': 'user not exist'
-            }, status=status_code)
+            raise ParseError('user not exist')
 
-        status_code = status.HTTP_200_OK
         t = Token.objects.filter(user_id=tmp.id)
         if t:
             t.delete()
@@ -194,4 +126,4 @@ def set_user_endpoint(request):
     return Response({
         'code': 0,
         'msg': 'success'
-    }, status=status_code)
+    })

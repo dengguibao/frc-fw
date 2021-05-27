@@ -1,6 +1,7 @@
 import subprocess
 import iptc
 
+
 def execShell(cmd):
     """
     send command to shell and execute
@@ -45,7 +46,7 @@ def timeRange2Seconds(time_range_str: str) -> int:
             return n * 60 * 60
         if suffix == 's':
             return n
-    except:
+    except ValueError:
         return False
 
 
@@ -73,7 +74,7 @@ def hexStr2Ip(hex_str: str):
     return '.'.join(field_list)
 
 
-def ip2MaskPrefix(ip_addr: str):
+def ip2MaskPrefix(ip_addr: str) -> int:
     """
     ip address convert to netmask prefix
     :param ip_addr: ip address
@@ -84,21 +85,21 @@ def ip2MaskPrefix(ip_addr: str):
     for field in ip_field:
         ip_num = int(field)
         if ip_num > 255:
-            return
+            return -1
         buff.append(bin(ip_num))
 
     bin_netmask_str = ''.join(buff).replace('0', '').replace('b', '')
     return len(bin_netmask_str)
 
 
-def prefix2NetMask(prefix: int):
+def prefix2NetMask(prefix: int) -> str:
     """
     netmask prefix convert to ip
     :param prefix: netmask prefix
     :return:  ip address
     """
     if prefix > 32:
-        return
+        return ''
     zero = 32 - prefix
     bin_ip = '1' * prefix + '0' * zero
     field1 = int('0b%s' % bin_ip[0:8], 2)
@@ -114,7 +115,7 @@ def prefix2NetMask(prefix: int):
     return '.'.join(field_list)
 
 
-def get_chain_groups(group_type: str):
+def get_chain_groups(group_type: str) -> list:
     data = []
     g_list = {
         'snat': {
@@ -130,15 +131,11 @@ def get_chain_groups(group_type: str):
             'chain_name': 'FORWARD',
         }
     }
-    if group_type not in g_list:
-        return False
-    try:
 
-        d = iptc.easy.dump_chain(g_list[group_type]['table_name'], g_list[group_type]['chain_name'], ipv6=False)
-    except:
-        return False
-    else:
-        for i in d:
-            if 'target' in i and 'goto' in i['target']:
-                data.append(i['target']['goto'])
+    assert group_type in g_list, 'illegal group type'
+
+    d = iptc.easy.dump_chain(g_list[group_type]['table_name'], g_list[group_type]['chain_name'], ipv6=False)
+    for i in d:
+        if 'target' in i and 'goto' in i['target']:
+            data.append(i['target']['goto'])
     return data

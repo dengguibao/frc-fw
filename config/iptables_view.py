@@ -1,7 +1,7 @@
 import iptc
 import json
 from rest_framework.decorators import api_view
-from rest_framework import status
+from rest_framework.exceptions import ParseError
 from rest_framework.response import Response
 
 from pyroute2 import IPDB
@@ -13,53 +13,29 @@ from common.verify import (
     verify_protocol,
     verify_interface_name,
     verify_ip_addr,
-    verify_field,
+    filter_user_data
 )
 from common.functions import get_chain_groups
 
 
 @api_view(['POST', 'DELETE'])
 def set_chain_group_endpoint(request):
-    req_body = request.body
-    try:
-        j = json.loads(req_body.decode())
-    except:
-        return Response({
-            'code': 1,
-            'msg': 'illegal request, body format error'
-        }, status=status.HTTP_400_BAD_REQUEST)
-
     fields = (
         ('*chain_name', str, None),
         ('*table_name', str, None),
         ('nat_mode', str, None),
     )
 
-    data = verify_field(j, fields)
-
-    if not isinstance(data, dict):
-        return Response({
-            'code': 1,
-            'msg': data
-        }, status=status.HTTP_400_BAD_REQUEST)
+    data = filter_user_data(request.body, fields)
 
     if data['table_name'] not in ('nat', 'filter'):
-        return Response({
-            'code': 1,
-            'msg': 'the table name mast be nat or filter!'
-        }, status=status.HTTP_400_BAD_REQUEST)
+        raise ParseError('the table name mast be nat or filter!')
 
     if data['table_name'] == 'nat' and 'nat_mode' not in data:
-        return Response({
-            'code': 1,
-            'msg': 'nat chain must be specific the nat_mode field!'
-        }, status=status.HTTP_400_BAD_REQUEST)
+        raise ParseError('nat chain must be specific the nat_mode field!')
 
     if 'nat_mode' in data and data['nat_mode'] not in ('snat', 'dnat'):
-        return Response({
-            'code': 1,
-            'msg': 'the nat_mode field value must be snat or dnat!'
-        }, status=status.HTTP_400_BAD_REQUEST)
+        raise ParseError('the nat_mode field value must be snat or dnat!')
 
     rule = {
         'src': '0.0.0.0/0',
@@ -68,6 +44,7 @@ def set_chain_group_endpoint(request):
         }
     }
 
+    root_chain = None
     if data['table_name'] == 'filter':
         root_chain = "FORWARD"
 
@@ -81,23 +58,18 @@ def set_chain_group_endpoint(request):
         if request.method == 'POST':
             iptc.easy.add_chain(data['table_name'], data['chain_name'])
             iptc.easy.add_rule(data['table_name'], root_chain, rule_d=rule)
-            status_code = status.HTTP_201_CREATED
 
         if request.method == 'DELETE':
             iptc.easy.delete_rule(data['table_name'], root_chain, rule_d=rule)
             iptc.easy.delete_chain(data['table_name'], data['chain_name'], flush=True)
-            status_code = status.HTTP_200_OK
 
     except Exception as e:
-        return Response({
-            'code': 1,
-            'msg': e.args[1] if len(e.args) >= 2 else str(e.args)
-        }, status=status.HTTP_400_BAD_REQUEST)
+        raise ParseError(e.args[1] if len(e.args) >= 2 else str(e.args))
 
     return Response({
         'code': 0,
         'msg': 'success'
-    }, status=status_code)
+    })
 
 
 @api_view(('POST', 'DELETE'))
@@ -105,11 +77,9 @@ def set_rule_endpoint(request, rule_type):
     req_body = request.body
     try:
         j = json.loads(req_body.decode())
-    except:
-        return Response({
-            'code': 1,
-            'msg': 'illegal request, body format error'
-        }, status=status.HTTP_400_BAD_REQUEST)
+    except json.JSONDecodeError:
+        raise ParseError('illegal request, body format error')
+
     target_list = {
         'snat': ('SNAT', 'MASQUERADE'),
         'dnat': ('DNAT', 'REDIRECT'),
@@ -117,17 +87,14 @@ def set_rule_endpoint(request, rule_type):
     }
 
     if rule_type not in target_list:
-        return Response({
-            'code': 1,
-            'msg': 'illegal rule type!'
-        }, status=status.HTTP_400_BAD_REQUEST)
+        raise ParseError('illegal rule type!')
 
     ret = insert_rule(rule_type, j, request.method, target_list[rule_type])
-    if ret['code'] == 0:
-        status_code = status.HTTP_200_OK
-    else:
-        status_code = status.HTTP_400_BAD_REQUEST
-    return Response(ret, status_code)
+    return Response({
+        'code': 0,
+        'msg': 'success',
+        'data': ret
+    })
 
 
 def insert_rule(rule_type: str, post_data: dict, action: str, target_action: tuple) -> dict:
@@ -189,13 +156,7 @@ def insert_rule(rule_type: str, post_data: dict, action: str, target_action: tup
             'msg': 'inert rule table is not nat or filter'
         }
 
-    data = verify_field(post_data, table_field[rule_type]['fields'])
-    if not isinstance(data, dict):
-        return {
-            'code': 1,
-            'msg': data
-        }
-
+    data = filter_user_data(post_data, table_field[rule_type]['fields'])
     chain_group_list = get_chain_groups(rule_type)
 
     if data['chain_group_name'] not in chain_group_list:
@@ -284,7 +245,7 @@ def build_rule(data: dict, target_action: tuple) -> dict:
         }
 
     r = {
-        'target': data['target']
+        'target': data['target'],
     }
 
     if 'to_source' in data:
@@ -345,8 +306,6 @@ def build_rule(data: dict, target_action: tuple) -> dict:
         r['iprange'] = {
             'dst_range': data['dst_range']
         }
-
-    # print(r)
     return r
 
 

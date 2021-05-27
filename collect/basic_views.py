@@ -1,6 +1,5 @@
 import time
 from rest_framework.decorators import api_view
-from rest_framework import status
 from rest_framework.response import Response
 
 
@@ -26,7 +25,7 @@ def get_basic_info_endpoint(request):
             'running_total_time': running_total_time if running_total_time else None,
             'system_time': system_time
         }
-    }, status=status.HTTP_200_OK)
+    })
 
 
 @api_view(('GET',))
@@ -38,5 +37,5 @@ def get_sys_forward_state_endpoint(request):
         'code': 0,
         'msg': 'success',
         'state': 'enable' if d.strip() == '1' else 'disable'
-    }, status=status.HTTP_200_OK)
+    })
 

@@ -1,15 +1,17 @@
+from rest_framework.exceptions import ParseError
 from pyroute2 import IPDB
+import json
 import re
 
 
-def verify_interface_name(ifname: str) -> bool:
+def verify_interface_name(if_name: str) -> bool:
     """
-    verify the ifname whether is invalid interface name
+    verify the if_name whether is invalid interface name
     """
     ipdb = IPDB()
-    ifname_list = ipdb.by_name.keys()
+    if_name_list = ipdb.by_name.keys()
     ipdb.release()
-    return True if ifname in ifname_list else False
+    return True if if_name in if_name_list else False
 
 
 def verify_ip_range(ip_range: str) -> bool:
@@ -67,11 +69,11 @@ def verify_ip_addr(ip: str) -> bool:
     for i in ip.split('.'):
         try:
             n = int(i)
-        except:
+        except ValueError:
             return False
         if n > 255:
             return False
-        if first and n == 0:
+        if first and n == 0 and ip != '0.0.0.0':
             return False
         first = False
     return True
@@ -111,7 +113,9 @@ def verify_ip_subnet(net: str) -> bool:
 
     try:
         n = int(ip_prefix[1])
-    except:
+    except ValueError:
+        return False
+    except IndexError:
         return False
 
     if n > 32:
@@ -124,7 +128,7 @@ def verify_prefix(prefix: int):
     """
     verify prefix whether is invalid prefix
     """
-    return True if prefix >= 0 or prefix <= 32 else False
+    return True if 0 <= prefix <= 32 else False
 
 
 def verify_protocol(protocol: str) -> bool:
@@ -141,12 +145,11 @@ def verify_port(p):
     verify port whether is invalid
     """
     try:
-        if not isinstance(p, int):
-            d = int(p)
-    except Exception as e:
-        return False
+        d = int(p)
+    except ValueError:
+        d = -1
 
-    if 0 < d or d > 65535:
+    if 0 < d < 65535:
         return str(p)
     return False
 
@@ -198,8 +201,10 @@ def verify_field(data: dict, field: tuple):
             if field_name[0] == '*':
                 field_name = field_name[1:]
 
-                if field_name not in data or not data[field_name]:
-                    return 'field %s is necessary and can not be empty' % field_name
+                if field_name not in data or \
+                        (isinstance(data[field_name], bool) and data[field_name] not in (True, False)) or \
+                        (isinstance(data[field_name], str) and len(data[field_name].strip()) == 0):
+                    return 'field "%s" is necessary and value can not be empty' % field_name
 
             if field_name not in data:
                 continue
@@ -239,7 +244,7 @@ def verify_mail(mail: str) -> bool:
     """
     verify mail whether invalid
     """
-    return True if re.match("^.+\\@(\\[?)[a-zA-Z0-9\\-\\.]+\\.([a-zA-Z]{2,3}|[0-9]{1,3})(\\]?)$", mail) else False
+    return True if re.match("^.+@(\\[?)[a-zA-Z0-9\\-.]+\\.([a-zA-Z]{2,3}|[0-9]{1,3})(]?)$", mail) else False
 
 
 def verify_true_false(i) -> bool:
@@ -247,3 +252,17 @@ def verify_true_false(i) -> bool:
     verify object(i) is true or false
     """
     return True if i.lower() in ('1', 1, 'true', 'false', 0, '0') else False
+
+
+def filter_user_data(data: any, fields: tuple):
+    j = dict()
+    if isinstance(data, (bytes, str)):
+        try:
+            j = json.loads(data)
+        except json.decoder.JSONDecodeError:
+            return 'request body is not a json'
+
+    clear_data = verify_field(j, fields)
+    if isinstance(clear_data, dict):
+        return clear_data
+    raise ParseError(clear_data)
