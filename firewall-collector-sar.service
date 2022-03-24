@@ -1,0 +1,13 @@
+[Unit]
+Description="firewall-collector-sar"
+After=firewall-web.service
+
+[Service]
+WorkingDirectory=/home/firewall
+Restart=always
+ExecStart=/usr/bin/python3 ./scripts/collector_sar.py --server 127.0.0.1:8000
+KillMode=process
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

@@ -114,3 +114,55 @@ class TcpInfo(models.Model):
         verbose_name = "tcp session info"
         db_table = "collect_tcp_info"
         ordering = ["-time"]
+
+
+class IptablesEvent(models.Model):
+    # time stamp
+    ts = models.IntegerField(null=False, blank=False)
+    # tcp flag
+    tcp_flag = models.CharField(max_length=10, null=True, blank=True)
+    # source addr
+    src = models.CharField(max_length=15, null=True, blank=True)
+    # destination addr
+    dst = models.CharField(max_length=15, null=True, blank=True)
+    # source port
+    sport = models.IntegerField(null=True, blank=True)
+    # destination port
+    dport = models.IntegerField(null=True, blank=True)
+    # source mac
+    smac = models.CharField(max_length=48, null=True, blank=True)
+    # destination mac
+    dmac = models.CharField(max_length=48, null=True, blank=True)
+    # previous layer protocol num
+    pre_protocol_num = models.CharField(max_length=20, null=True, blank=True)
+    # hostname
+    hostname = models.CharField(max_length=100, null=True, blank=True)
+    # in interface
+    in_interface = models.CharField(max_length=50, null=True, blank=True)
+    # out interface
+    out_interface = models.CharField(max_length=50, null=True, blank=True)
+    # tcp head: type of service
+    tos = models.CharField(max_length=20, null=True, blank=True)
+    # tcp head: pack length
+    pack_len = models.IntegerField(null=True, blank=True)
+    # tcp head: priority
+    prec = models.CharField(max_length=20, null=True, blank=True)
+    # protocol
+    protocol = models.CharField(max_length=20, null=True, blank=True)
+    # tcp head: window size
+    window = models.IntegerField(null=True, blank=True)
+    # tcp head: ttl
+    ttl = models.IntegerField(null=True, blank=True)
+    # tcp sequence
+    pack_id = models.IntegerField(null=True, blank=True)
+    # tcp head: fragment
+    df = models.CharField(max_length=10, null=True, blank=True)
+    # tcp head: tcp falg ECN value
+    res = models.CharField(max_length=20, null=True, blank=True)
+    # custom event prefix
+    event_prefix = models.CharField(max_length=50, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "iptables event"
+        db_table = "collect_iptables_event"
+        ordering = ["-ts"]

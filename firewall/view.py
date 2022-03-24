@@ -1,10 +1,7 @@
-from django.http import FileResponse
+from django.shortcuts import render
 
 
-def read_api_ref_endpoint(request):
-    """
-    open readme on web browser
-    """
-    fp = open('api_ref.md', 'rb')
-    response = FileResponse(fp)
-    return response
+def index_endpoint(request):
+    return render(request, 'index/index.html', {
+        'api_url': 'http://%s' % request.META['HTTP_HOST']
+    })

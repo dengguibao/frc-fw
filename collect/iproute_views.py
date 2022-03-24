@@ -1,49 +1,70 @@
-from pyroute2 import IPRoute
-from pyroute2 import IPDB
+import os.path
 
+from pyroute2 import IPDB
+from config.models import PolicyRoute
+from .serializer import PolicyRouteSerialize
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework.exceptions import ParseError
 
-from common.functions import prefix2NetMask
+from common.functions import prefix2NetMask, get_ifindex_pair, ifindex2ifname
+
+
+@api_view(['GET', ])
+def get_arp_tables_endpoints(request):
+    if not os.path.exists('/proc/net/arp'):
+        raise ParseError('not found /proc/net/arp')
+
+    first_line = True
+    data = []
+    with open('/proc/net/arp', 'r') as fp:
+        content = fp.read().splitlines()
+
+    n = 1
+    for line in content:
+        if first_line:
+            first_line = False
+            continue
+
+        x = line.split()
+        data.append({
+            'id': n,
+            'ip_addr': x[0],
+            'hw_addr': x[3],
+            'device': x[5]
+        })
+        n += 1
+    return Response({
+        'msg': 'success',
+        'data': data,
+        'total': len(data)
+    })
 
 
 @api_view(['GET'])
 def get_static_route_table_endpoint(request):
-    table = request.GET.get('interface_index', 254)
-    try:
-        table = int(table)
-    except ValueError:
-        table = 254
     ipdb = IPDB()
-    if_name_list = ipdb.by_name.keys()
-    ipr = IPRoute()
-    x = ipr.route('dump', table=table)
+    if_name_list = get_ifindex_pair()
     route_table = []
-    for i in x:
-        buf = {}
-        dst_len = i['dst_len']
-        table = i['table']
-        dst_addr = i.get_attr('RTA_DST') if i.get_attr('RTA_DST') else '0.0.0.0'
-        gw = i.get_attr('RTA_GATEWAY')
-        metric = i.get_attr('RTA_PRIORITY')
-        if_idx = i.get_attr('RTA_OIF')
-
-        if not if_idx:
+    n = 0
+    for i in ipdb.routes:
+        # print(i)
+        if i.family != 2:
             continue
 
-        buf['destination'] = dst_addr
-        buf['netmask'] = prefix2NetMask(dst_len)
-        if gw:
-            buf['gateway'] = gw
-        if if_idx:
-            buf['iface'] = if_name_list[if_idx - 1]
-        if metric:
-            buf['metric'] = metric
-        buf['table'] = table
-        buf['prefix'] = dst_len
-        route_table.append(buf)
-        del buf
-    ipr.close()
+        route_table.append({
+            'dst': '0.0.0.0' if i.dst == 'default' else i.dst,
+            'dst_len': i.dst_len,
+            'dst_mask': prefix2NetMask(i.dst_len),
+            'gateway': i.gateway,
+            'oif_index': i.oif,
+            'oif': ifindex2ifname(if_name_list, i.oif),
+            'priority': i.priority,
+            'table': i.table,
+            'family': 'Ipv4' if i.family == 2 else 'Ipv6',
+            'idx': n
+        })
+        n += 1
     ipdb.release()
     return Response({
         "code": 0,
@@ -54,37 +75,12 @@ def get_static_route_table_endpoint(request):
 
 @api_view(('GET',))
 def get_all_ip_rule_endpoint(request):
-    data = []
-    all_if = IPDB().by_name.keys()
-    sys_table_name = {
-        253: 'local',
-        254: 'main',
-        255: 'default',
-    }
-    with IPRoute() as x:
-        for i in x.rule('dump'):
-            buf = {}
-            dst_len = i['dst_len']
-            src_len = i['src_len']
-            table = i['table']
-            tos = i['tos']
-            dst_addr = i.get_attr('FRA_DST') if i.get_attr('FRA_DST') else '0.0.0.0'
-            src_addr = i.get_attr('FRA_SRC') if i.get_attr('FRA_SRC') else '0.0.0.0'
-            priority = i.get_attr('FRA_PRIORITY')
 
-            buf['from'] = f'{src_addr}/{src_len}'
-            buf['to'] = f'{dst_addr}/{dst_len}'
-            buf['tos'] = '%s' % tos
-            print(table)
-            buf['table_name'] = sys_table_name[table] if table in (253, 254, 255) else all_if[table-1]
-
-            buf['priority'] = str(priority) if priority else '0'
-            buf['table'] = '%s' % table
-            data.append(buf)
-            del buf
+    res = PolicyRoute.objects.all()
+    ser = PolicyRouteSerialize(res, many=True)
 
     return Response({
         'code': 0,
         'msg': 'success',
-        'data': data
+        'data': ser.data
     })

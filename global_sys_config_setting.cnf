@@ -1,0 +1,11 @@
+[sys_ping_func]
+desc=Whether to enable Ping test function
+value=1
+
+[sys_forward]
+desc=Whether to enable system Forward function
+value=1
+
+[set_ssh_rule_func]
+desc=Whether to enable ssh remote login function
+value=1

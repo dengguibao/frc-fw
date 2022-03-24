@@ -1,0 +1,27 @@
+{
+  "files": {
+    "main.css": "/static/css/main.db4ec7d1.chunk.css",
+    "main.js": "/static/js/main.7100d4ad.chunk.js",
+    "main.js.map": "/static/js/main.7100d4ad.chunk.js.map",
+    "runtime-main.js": "/static/js/runtime-main.02e728c0.js",
+    "runtime-main.js.map": "/static/js/runtime-main.02e728c0.js.map",
+    "static/css/2.83a79fa7.chunk.css": "/static/css/2.83a79fa7.chunk.css",
+    "static/js/2.ab1b03b3.chunk.js": "/static/js/2.ab1b03b3.chunk.js",
+    "static/js/2.ab1b03b3.chunk.js.map": "/static/js/2.ab1b03b3.chunk.js.map",
+    "index.html": "/index.html",
+    "static/css/2.83a79fa7.chunk.css.map": "/static/css/2.83a79fa7.chunk.css.map",
+    "static/css/main.db4ec7d1.chunk.css.map": "/static/css/main.db4ec7d1.chunk.css.map",
+    "static/js/2.ab1b03b3.chunk.js.LICENSE.txt": "/static/js/2.ab1b03b3.chunk.js.LICENSE.txt",
+    "static/media/ad.2d77ba1d.png": "/static/media/ad.2d77ba1d.png",
+    "static/media/bg.20139654.jpg": "/static/media/bg.20139654.jpg",
+    "static/media/logo.69cd1714.svg": "/static/media/logo.69cd1714.svg",
+    "static/media/openvpn.1a0f6d22.svg": "/static/media/openvpn.1a0f6d22.svg"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.02e728c0.js",
+    "static/css/2.83a79fa7.chunk.css",
+    "static/js/2.ab1b03b3.chunk.js",
+    "static/css/main.db4ec7d1.chunk.css",
+    "static/js/main.7100d4ad.chunk.js"
+  ]
+}

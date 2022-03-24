@@ -11,4 +11,4 @@ KillSignal=SIGQUIT
 Restart=allways
 
 [Install]
-WantedBy=multi-user.targe
+WantedBy=multi-user.target

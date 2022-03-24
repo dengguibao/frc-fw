@@ -1,5 +1,6 @@
+import os
 import subprocess
-import iptc
+from pyroute2 import NDB, IPDB
 
 
 def execShell(cmd):
@@ -84,7 +85,7 @@ def ip2MaskPrefix(ip_addr: str) -> int:
     buff = []
     for field in ip_field:
         ip_num = int(field)
-        if ip_num > 255:
+        if ip_num > 255 or ip_num < 0:
             return -1
         buff.append(bin(ip_num))
 
@@ -115,27 +116,85 @@ def prefix2NetMask(prefix: int) -> str:
     return '.'.join(field_list)
 
 
-def get_chain_groups(group_type: str) -> list:
+# def get_chain_groups(group_type: str) -> list:
+#     data = []
+#     g_list = {
+#         'snat': {
+#             'table_name': 'nat',
+#             'chain_name': 'POSTROUTING',
+#         },
+#         'dnat': {
+#             'table_name': 'nat',
+#             'chain_name': 'PREROUTING',
+#         },
+#         'filter': {
+#             'table_name': 'filter',
+#             'chain_name': 'FORWARD',
+#         }
+#     }
+#
+#     assert group_type in g_list, 'illegal group type'
+#
+#     d = iptc.easy.dump_chain(g_list[group_type]['table_name'], g_list[group_type]['chain_name'], ipv6=False)
+#     for i in d:
+#         if 'target' in i and 'goto' in i['target']:
+#             data.append(i['target']['goto'])
+#     return data
+
+
+def get_client_ip(request):
+    """
+    获取客户端ip地址
+    """
+    try:
+        remote_ip = request.META['HTTP_X_FORWARDED_FOR'].split(',')[0]
+    except KeyError:
+        remote_ip = request.META.get('REMOTE_ADDR', None)
+    return remote_ip
+
+
+def get_ifindex_pair() -> list:
+    # return NDB().interfaces.dump().select('index', 'ifname').format('json')
+    ipdb = IPDB()
+    iflist = ipdb.by_name
     data = []
-    g_list = {
-        'snat': {
-            'table_name': 'nat',
-            'chain_name': 'POSTROUTING',
-        },
-        'dnat': {
-            'table_name': 'nat',
-            'chain_name': 'PREROUTING',
-        },
-        'filter': {
-            'table_name': 'filter',
-            'chain_name': 'FORWARD',
-        }
-    }
+    for i in iflist:
+        data.append(
+            (iflist[i]['index'], i)
+        )
+    return data
 
-    assert group_type in g_list, 'illegal group type'
 
-    d = iptc.easy.dump_chain(g_list[group_type]['table_name'], g_list[group_type]['chain_name'], ipv6=False)
-    for i in d:
-        if 'target' in i and 'goto' in i['target']:
-            data.append(i['target']['goto'])
+def ifindex2ifname(ifpair: list, index: int) -> str:
+    for ifindex, ifname in ifpair:
+        if ifindex == index:
+            return ifname
+        else:
+            continue
+    return ''
+
+
+def get_file_content(filename: str) -> list:
+    c = []
+    if os.path.exists(filename):
+        fp = open(filename, 'r')
+        c = fp.read().splitlines()
+        fp.close()
+    return c
+
+
+def get_all_ip_list() -> list:
+    ipdb = IPDB()
+    data = []
+    for i in ipdb.by_name.keys():
+        if i in ('lo', 'tap', 'tun0', 'tun1', 'tun'):
+            continue
+
+        x = ipdb.interfaces[i]
+        if 'ipaddr' in x and x['ipaddr']:
+            ip_addr = x['ipaddr'][0]['local']
+            data.append(ip_addr)
+        continue
+
+    ipdb.release()
     return data

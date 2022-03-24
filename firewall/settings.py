@@ -36,17 +36,21 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     # 'django.contrib.sessions',
     'django.contrib.messages',
-    # 'django.contrib.staticfiles',
+    'django.contrib.staticfiles',
+    'corsheaders',
     'rest_framework',
     'common',
     'collect',
     'user',
     'rest_framework.authtoken',
+    'config',
+    'app'
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -56,21 +60,23 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'firewall.urls'
 
-# TEMPLATES = [
-#     {
-#         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-#         'DIRS': [],
-#         'APP_DIRS': True,
-#         'OPTIONS': {
-#             'context_processors': [
-#                 'django.template.context_processors.debug',
-#                 'django.template.context_processors.request',
-#                 'django.contrib.auth.context_processors.auth',
-#                 'django.contrib.messages.context_processors.messages',
-#             ],
-#         },
-#     },
-# ]
+TOKEN_EXPIRE_TIME = 900
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': ['%s/templates' % BASE_DIR],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
 
 WSGI_APPLICATION = 'firewall.wsgi.application'
 
@@ -109,7 +115,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Shanghai'
 
 USE_I18N = True
 
@@ -122,7 +128,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+# STATIC_ROOT = '%s/static/' % BASE_DIR
+STATICFILES_DIRS = [
+    '%s/static/' % BASE_DIR,
+]
 
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': (
@@ -136,3 +147,49 @@ REST_FRAMEWORK = {
     #     'rest_framework.permissions.DjangoModelPermissions'
     # )
 }
+
+CORS_ALLOW_CREDENTIALS = True
+CORS_ORIGIN_ALLOW_ALL = True
+# CORS_ORIGIN_WHITELIST = (
+#     'http://192.168.3.171',
+# )
+
+CORS_ALLOW_METHODS = (
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+    'VIEW',
+)
+
+CORS_ALLOW_HEADERS = (
+    'XMLHttpRequest',
+    'X_FILENAME',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with'
+)
+
+PAGE_SIZE = 15
+
+IPTABLES_PREFIX = 'IPTABLES:EVENT:'
+
+# 0 debug –有调式信息的，日志信息最多
+# 1 info –一般信息的日志，最常用
+# 2 notice –最具有重要性的普通条件的信息
+# 3 warning –警告级别
+# 4 err –错误级别，阻止某个功能或者模块不能正常工作的信息
+# 5 crit –严重级别，阻止整个系统或者整个软件不能正常工作的信息
+# 6 alert –需要立刻修改的信息
+# 7 emerg –内核崩溃等严重信息
+IPTABLES_LOG_LEVEL = 3
+
+APP_SETTING_FILE = './app_settings.cnf'
+OPENVPN_PID_FILE = '/run/openvpn/server.pid'
